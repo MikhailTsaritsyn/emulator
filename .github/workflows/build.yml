@@ -1,0 +1,77 @@
+name: CMake Build Matrix
+
+on: [push]
+
+jobs:
+  build:
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {
+              name: "Ubuntu latest GCC Debug",
+              artifact: "ubuntu-latest-gcc-debug.tar.gz",
+              os: ubuntu-latest,
+              build_type: debug,
+              cc: gcc,
+              cxx: g++
+            }
+          - {
+              name: "Ubuntu latest GCC Release",
+              artifact: "ubuntu-latest-gcc-release.tar.gz",
+              os: ubuntu-latest,
+              build_type: release,
+              cc: gcc,
+              cxx: g++
+            }
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+
+      - name: Install latest CMake
+        run: sudo snap install cmake --classic
+
+      - name: Configure
+        run: /snap/bin/cmake --preset=${{ matrix.config.cc }}-${{ matrix.config.build_type }}-warnings
+
+      - name: Build
+        run: /snap/bin/cmake --build --preset=${{ matrix.config.cc }}-${{ matrix.config.build_type }}-warnings
+
+      - name: Pack
+        run: /snap/bin/cpack --preset=${{ matrix.config.cc }}-${{ matrix.config.build_type }}-warnings
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          path: ./build/${{ matrix.config.cc }}-${{ matrix.config.build_type }}-warnings/emulator-0.1.1-Linux.tar.gz
+          name: ${{ matrix.config.artifact }}
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Store Release url
+        run: |
+          echo "${{ steps.create_release.outputs.upload_url }}" > ./upload_url
+
+      - uses: actions/upload-artifact@v4
+        with:
+          path: ./upload_url
+          name: upload_url

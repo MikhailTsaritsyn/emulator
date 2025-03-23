@@ -5,3 +5,23 @@ add_executable(emulator main.cpp)
 
 target_compile_options(emulator PRIVATE -Werror)
 target_compile_features(emulator PUBLIC cxx_std_23)
+
+install(
+    TARGETS emulator
+    EXPORT emulatorTargets
+    FILE_SET emulator_headers
+)
+
+install(
+    EXPORT emulatorTargets
+    FILE emulatorTargets.cmake
+    DESTINATION share/cmake/emulator
+    NAMESPACE emulator::
+)
+
+install(
+    FILES cmake/emulatorConfig.cmake
+    DESTINATION share/cmake/emulator
+)
+
+include(CPack)
