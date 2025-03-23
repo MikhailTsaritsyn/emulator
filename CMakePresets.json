@@ -2,7 +2,7 @@
   "version": 6,
   "cmakeMinimumRequired": {
     "major": 3,
-    "minor": 29,
+    "minor": 31,
     "patch": 0
   },
   "include": [
@@ -32,6 +32,56 @@
       "description": "Configures Release for Clang with warnings enabled",
       "hidden": false,
       "inherits": ["clang", "release", "warnings"]
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "gcc-debug-warnings",
+      "description": "Builds Debug for GCC with warnings enabled",
+      "configurePreset": "gcc-debug-warnings"
+    },
+    {
+      "name": "gcc-release-warnings",
+      "description": "Builds Release for GCC with warnings enabled",
+      "configurePreset": "gcc-release-warnings"
+    },
+    {
+      "name": "clang-debug-warnings",
+      "description": "Builds Debug for Clang with warnings enabled",
+      "configurePreset": "clang-debug-warnings"
+    },
+    {
+      "name": "clang-release-warnings",
+      "description": "Builds Release for Clang with warnings enabled",
+      "configurePreset": "clang-release-warnings"
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "debug",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "gcc-debug-warnings"
+        },
+        {
+          "type": "build",
+          "name": "gcc-debug-warnings"
+        }
+      ]
+    },
+    {
+      "name": "release",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "gcc-release-warnings"
+        },
+        {
+          "type": "build",
+          "name": "gcc-release-warnings"
+        }
+      ]
     }
   ]
 }
