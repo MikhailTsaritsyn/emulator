@@ -1,0 +1,37 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 29,
+    "patch": 0
+  },
+  "include": [
+    "cmake/presets/configurePresets.json"
+  ],
+  "configurePresets": [
+    {
+      "name": "gcc-debug-warnings",
+      "description": "Configures Debug for GCC with warnings enabled",
+      "hidden": false,
+      "inherits": ["gcc", "debug", "warnings"]
+    },
+    {
+      "name": "gcc-release-warnings",
+      "description": "Configures Release for GCC with warnings enabled",
+      "hidden": false,
+      "inherits": ["gcc", "release", "warnings"]
+    },
+    {
+      "name": "clang-debug-warnings",
+      "description": "Configures Debug for Clang with warnings enabled",
+      "hidden": false,
+      "inherits": ["clang", "debug", "warnings"]
+    },
+    {
+      "name": "clang-release-warnings",
+      "description": "Configures Release for Clang with warnings enabled",
+      "hidden": false,
+      "inherits": ["clang", "release", "warnings"]
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 29,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "description": "Basic configuration of the project",
+      "hidden": true,
+      "generator": "Ninja",
+      "installDir": "${sourceDir}/install/${presetName}",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "vendor": {
+        "jetbrains.com/clion": {
+          "toolchain": "WSL 24.04"
+        }
+      }
+    },
+    {
+      "name": "warnings",
+      "description": "Adds compiler flags to enable as many warnings as possible",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "$env{BASIC_WARNINGS} $env{ADVANCED_WARNINGS} $env{COMPILER_SPECIFIC_WARNINGS}"
+      },
+      "environment": {
+        "BASIC_WARNINGS": "-Wall -Wextra -Wshadow -Wpedantic -Wno-unknown-warning-option",
+        "ADVANCED_WARNINGS": "-Wnon-virtual-dtor -Wcast-align -Woverloaded-virtual -Wunused -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wimplicit-fallthrough -Wnarrowing"
+      }
+    },
+    {
+      "name": "release",
+      "description": "Specifies Release configuration",
+      "hidden": true,
+      "inherits": ["base"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "debug",
+      "description": "Specifies Debug configuration",
+      "hidden": true,
+      "inherits": ["base"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "gcc",
+      "description": "Specifies GCC compiler",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++"
+      },
+      "environment": {
+        "COMPILER_SPECIFIC_WARNINGS": "-Wconversion -Wlogical-op"
+      }
+    },
+    {
+      "name": "clang",
+      "description": "Specifies Clang compiler",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      },
+      "environment": {
+        "COMPILER_SPECIFIC_WARNINGS": "-Wlong-long"
+      }
+    }
+  ]
+}
