@@ -58,19 +58,19 @@
   ],
   "packagePresets": [
     {
-      "name": "debug",
+      "name": "gcc-debug-warnings",
       "configurePreset": "gcc-debug-warnings",
       "generators": ["TGZ"]
     },
     {
-      "name": "release",
+      "name": "gcc-release-warnings",
       "configurePreset": "gcc-release-warnings",
       "generators": ["TGZ"]
     }
   ],
   "workflowPresets": [
     {
-      "name": "debug",
+      "name": "gcc-debug-warnings",
       "steps": [
         {
           "type": "configure",
@@ -82,12 +82,12 @@
         },
         {
           "type": "package",
-          "name": "debug"
+          "name": "gcc-debug-warnings"
         }
       ]
     },
     {
-      "name": "release",
+      "name": "gcc-release-warnings",
       "steps": [
         {
           "type": "configure",
@@ -99,7 +99,7 @@
         },
         {
           "type": "package",
-          "name": "release"
+          "name": "gcc-release-warnings"
         }
       ]
     }

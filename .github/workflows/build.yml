@@ -33,11 +33,19 @@ jobs:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
 
       - name: Install latest CMake
-        run: |
-          sudo snap install cmake --classic
+        run: sudo snap install cmake --classic
 
       - name: Configure
         run: /snap/bin/cmake --preset=${{ matrix.config.cc }}-${{ matrix.config.build_type }}-warnings
 
       - name: Build
         run: /snap/bin/cmake --build --preset=${{ matrix.config.cc }}-${{ matrix.config.build_type }}-warnings
+
+      - name: Pack
+        run: /snap/bin/cpack --preset=${{ matrix.config.cc }}-${{ matrix.config.build_type }}-warnings
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          path: ./build/${{ matrix.config.cc }}-${{ matrix.config.build_type }}-warnings/emulator-0.1.1-Linux.tar.gz
+          name: ${{ matrix.config.artifact }}
