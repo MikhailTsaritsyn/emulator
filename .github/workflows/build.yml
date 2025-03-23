@@ -1,0 +1,40 @@
+name: CMake Build Matrix
+
+on: [push]
+
+jobs:
+  build:
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {
+              name: "Ubuntu latest GCC Debug",
+              artifact: "ubuntu-latest-gcc-debug.tar.gz",
+              os: ubuntu-latest,
+              build_type: debug,
+              cc: gcc,
+              cxx: g++
+            }
+          - {
+              name: "Ubuntu latest GCC Release",
+              artifact: "ubuntu-latest-gcc-release.tar.gz",
+              os: ubuntu-latest,
+              build_type: release,
+              cc: gcc,
+              cxx: g++
+            }
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+
+      - name: Install latest CMake
+        run: |
+          sudo snap install cmake --classic
+
+      - name: Configure
+        run: /snap/bin/cmake --preset=${{ matrix.config.cc }}-${{ matrix.config.build_type }}-warnings
