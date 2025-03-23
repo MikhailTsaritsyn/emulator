@@ -38,3 +38,6 @@ jobs:
 
       - name: Configure
         run: /snap/bin/cmake --preset=${{ matrix.config.cc }}-${{ matrix.config.build_type }}-warnings
+
+      - name: Build
+        run: /snap/bin/cmake --build --preset=${{ matrix.config.cc }}-${{ matrix.config.build_type }}-warnings
