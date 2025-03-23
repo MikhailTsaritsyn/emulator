@@ -56,6 +56,18 @@
       "configurePreset": "clang-release-warnings"
     }
   ],
+  "packagePresets": [
+    {
+      "name": "debug",
+      "configurePreset": "gcc-debug-warnings",
+      "generators": ["TGZ"]
+    },
+    {
+      "name": "release",
+      "configurePreset": "gcc-release-warnings",
+      "generators": ["TGZ"]
+    }
+  ],
   "workflowPresets": [
     {
       "name": "debug",
@@ -67,6 +79,10 @@
         {
           "type": "build",
           "name": "gcc-debug-warnings"
+        },
+        {
+          "type": "package",
+          "name": "debug"
         }
       ]
     },
@@ -80,6 +96,10 @@
         {
           "type": "build",
           "name": "gcc-release-warnings"
+        },
+        {
+          "type": "package",
+          "name": "release"
         }
       ]
     }
