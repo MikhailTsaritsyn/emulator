@@ -80,6 +80,9 @@ jobs:
           }
     
     steps:
+      - name: Install latest CPack
+        run: sudo snap install cmake --classic
+
       - name: Pack
         run: /snap/bin/cpack --preset=${{ matrix.config.cc }}-${{ matrix.config.build_type }}-warnings
 
