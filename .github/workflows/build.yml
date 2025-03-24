@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   build:
-    name: "Build ${{ matrix.cc }} ${{ matrix.build_type }} for ubuntu-latest"
+    name: "Build and test ${{ matrix.cc }} ${{ matrix.build_type }} for ubuntu-latest"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -23,11 +23,31 @@ jobs:
       - name: Install latest CMake
         run: sudo snap install cmake --classic
 
+      - name: Install Googletest
+        run: |
+          sudo apt-get -y install googletest
+          cd /usr/src/googletest/
+          sudo mkdir build
+          cd build
+          sudo cmake --install-prefix=/usr/local -DBUILD_SHARED_LIBS=ON -DBUILD_GMOCK=ON -DINSTALL_GTEST=ON -DINSTALL_GMOCK=ON ../
+          sudo make
+          sudo make install
+          cd ..
+          sudo rm -r build
+
+      - name: Set environment variables
+        run: |
+          export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+          echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
       - name: Configure
         run: /snap/bin/cmake --preset=${{ matrix.cc }}-${{ matrix.build_type }}-warnings
 
       - name: Build
         run: /snap/bin/cmake --build --preset=${{ matrix.cc }}-${{ matrix.build_type }}-warnings
+
+      - name: Test
+        run: /snap/bin/ctest --preset=${{ matrix.cc }}-${{ matrix.build_type }}-warnings
 
       - name: Pack
         if: ${{ startsWith(github.ref, 'refs/tags/v') }}
