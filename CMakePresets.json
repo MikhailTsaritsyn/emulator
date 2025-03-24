@@ -11,25 +11,25 @@
   "configurePresets": [
     {
       "name": "gcc-debug-warnings",
-      "description": "Configures Debug for GCC with warnings enabled",
+      "description": "Configure Debug for GCC with warnings enabled",
       "hidden": false,
       "inherits": ["gcc", "debug", "warnings"]
     },
     {
       "name": "gcc-release-warnings",
-      "description": "Configures Release for GCC with warnings enabled",
+      "description": "Configure Release for GCC with warnings enabled",
       "hidden": false,
       "inherits": ["gcc", "release", "warnings"]
     },
     {
       "name": "clang-debug-warnings",
-      "description": "Configures Debug for Clang with warnings enabled",
+      "description": "Configure Debug for Clang with warnings enabled",
       "hidden": false,
       "inherits": ["clang", "debug", "warnings"]
     },
     {
       "name": "clang-release-warnings",
-      "description": "Configures Release for Clang with warnings enabled",
+      "description": "Configure Release for Clang with warnings enabled",
       "hidden": false,
       "inherits": ["clang", "release", "warnings"]
     }
@@ -37,22 +37,59 @@
   "buildPresets": [
     {
       "name": "gcc-debug-warnings",
-      "description": "Builds Debug for GCC with warnings enabled",
+      "description": "Build Debug for GCC with warnings enabled",
       "configurePreset": "gcc-debug-warnings"
     },
     {
       "name": "gcc-release-warnings",
-      "description": "Builds Release for GCC with warnings enabled",
+      "description": "Build Release for GCC with warnings enabled",
       "configurePreset": "gcc-release-warnings"
     },
     {
       "name": "clang-debug-warnings",
-      "description": "Builds Debug for Clang with warnings enabled",
+      "description": "Build Debug for Clang with warnings enabled",
       "configurePreset": "clang-debug-warnings"
     },
     {
       "name": "clang-release-warnings",
-      "description": "Builds Release for Clang with warnings enabled",
+      "description": "Build Release for Clang with warnings enabled",
+      "configurePreset": "clang-release-warnings"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "gcc-debug-warnings",
+      "description": "Test Debug for GCC with warnings enabled",
+      "inherits": ["base"],
+      "configurePreset": "gcc-debug-warnings"
+    },
+    {
+      "name": "gcc-release-warnings",
+      "description": "Test Release for GCC with warnings enabled",
+      "inherits": ["base"],
+      "configurePreset": "gcc-release-warnings"
+    },
+    {
+      "name": "clang-debug-warnings",
+      "description": "Test Debug for Clang with warnings enabled",
+      "inherits": ["base"],
+      "configurePreset": "clang-debug-warnings"
+    },
+    {
+      "name": "clang-release-warnings",
+      "description": "Test Release for Clang with warnings enabled",
+      "inherits": ["base"],
       "configurePreset": "clang-release-warnings"
     }
   ],
@@ -73,17 +110,13 @@
       "name": "clang-debug-warnings",
       "description": "Pack Debug for Clang as .tar.gz",
       "configurePreset": "clang-debug-warnings",
-      "generators": [
-        "TGZ"
-      ]
+      "generators": ["TGZ"]
     },
     {
       "name": "clang-release-warnings",
       "description": "Pack Release for Clang as .tar.gz",
       "configurePreset": "clang-release-warnings",
-      "generators": [
-        "TGZ"
-      ]
+      "generators": ["TGZ"]
     }
   ]
 }
