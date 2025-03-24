@@ -26,6 +26,22 @@ jobs:
               cc: gcc,
               cxx: g++
             }
+          - {
+            name: "Ubuntu latest Clang Debug",
+            artifact: "ubuntu-latest-clang-debug.tar.gz",
+            os: ubuntu-latest,
+            build_type: debug,
+            cc: clang,
+            cxx: clang++
+          }
+          - {
+            name: "Ubuntu latest Clang Release",
+            artifact: "ubuntu-latest-clang-release.tar.gz",
+            os: ubuntu-latest,
+            build_type: release,
+            cc: clang,
+            cxx: clang++
+          }
 
     steps:
       - uses: actions/checkout@v4
