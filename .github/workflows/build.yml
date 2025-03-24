@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   build:
-    name: "Build ${{ matrix.cc }} ${{ matrix.build_type }} for ubuntu-latest"
+    name: "Build and test ${{ matrix.cc }} ${{ matrix.build_type }} for ubuntu-latest"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
