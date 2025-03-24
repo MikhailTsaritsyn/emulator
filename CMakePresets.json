@@ -2,7 +2,7 @@
   "version": 6,
   "cmakeMinimumRequired": {
     "major": 3,
-    "minor": 29,
+    "minor": 25,
     "patch": 0
   },
   "include": [
@@ -32,6 +32,58 @@
       "description": "Configures Release for Clang with warnings enabled",
       "hidden": false,
       "inherits": ["clang", "release", "warnings"]
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "gcc-debug-warnings",
+      "description": "Builds Debug for GCC with warnings enabled",
+      "configurePreset": "gcc-debug-warnings"
+    },
+    {
+      "name": "gcc-release-warnings",
+      "description": "Builds Release for GCC with warnings enabled",
+      "configurePreset": "gcc-release-warnings"
+    },
+    {
+      "name": "clang-debug-warnings",
+      "description": "Builds Debug for Clang with warnings enabled",
+      "configurePreset": "clang-debug-warnings"
+    },
+    {
+      "name": "clang-release-warnings",
+      "description": "Builds Release for Clang with warnings enabled",
+      "configurePreset": "clang-release-warnings"
+    }
+  ],
+  "packagePresets": [
+    {
+      "name": "gcc-debug-warnings",
+      "description": "Pack Debug for GCC as .tar.gz",
+      "configurePreset": "gcc-debug-warnings",
+      "generators": ["TGZ"]
+    },
+    {
+      "name": "gcc-release-warnings",
+      "description": "Pack Release for GCC as .tar.gz",
+      "configurePreset": "gcc-release-warnings",
+      "generators": ["TGZ"]
+    },
+    {
+      "name": "clang-debug-warnings",
+      "description": "Pack Debug for Clang as .tar.gz",
+      "configurePreset": "clang-debug-warnings",
+      "generators": [
+        "TGZ"
+      ]
+    },
+    {
+      "name": "clang-release-warnings",
+      "description": "Pack Release for Clang as .tar.gz",
+      "configurePreset": "clang-release-warnings",
+      "generators": [
+        "TGZ"
+      ]
     }
   ]
 }
