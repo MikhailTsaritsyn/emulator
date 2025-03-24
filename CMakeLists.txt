@@ -23,19 +23,5 @@ include(GoogleTest)
 gtest_discover_tests(emulator_test)
 
 # Set up packaging
-install(
-    TARGETS emulator
-    EXPORT emulatorTargets
-    FILE_SET emulator_headers
-)
-install(
-    EXPORT emulatorTargets
-    FILE emulatorTargets.cmake
-    DESTINATION share/cmake/emulator
-    NAMESPACE emulator::
-)
-install(
-    FILES cmake/emulatorConfig.cmake
-    DESTINATION share/cmake/emulator
-)
+install(TARGETS emulator)
 include(CPack)
