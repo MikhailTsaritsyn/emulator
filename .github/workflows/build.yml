@@ -100,18 +100,16 @@ jobs:
 
     steps:
       - name: Download artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/download-artifact@v4
         with:
           name: "ubuntu-latest-${{ matrix.cc }}-${{ matrix.build_type }}.tar.gz"
-          path: ./ubuntu-latest-${{ matrix.cc }}-${{ matrix.build_type }}.tar.gz
-          if-no-files-found: 'error'
+          path: ./
 
       - name: Download URL
-        uses: actions/upload-artifact@v4
+        uses: actions/download-artifact@v4
         with:
           name: upload_url
-          path: ./upload_url
-          if-no-files-found: 'error'
+          path: ./
       - id: set_upload_url
         run: |
           upload_url=`cat ./upload_url`
