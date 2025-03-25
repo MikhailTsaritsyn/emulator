@@ -111,6 +111,9 @@ jobs:
           name: upload_url
           path: ./
 
+      - name: List all content
+        run: ls
+
       - name: Set upload URL
         id: set_upload_url
         run: |
@@ -126,4 +129,4 @@ jobs:
           upload_url: ${{ steps.set_upload_url.outputs.upload_url }}
           asset_path: ./ubuntu-latest-${{ matrix.cc }}-${{ matrix.build_type }}.tar.gz
           asset_name: ubuntu-latest-${{ matrix.build_type }}.tar.gz
-          asset_content_type: application/x-gtar
+          asset_content_type: application/x-gzip
