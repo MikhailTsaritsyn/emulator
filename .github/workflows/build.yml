@@ -58,7 +58,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           path: ./build/${{ matrix.cc }}-${{ matrix.build_type }}-warnings/emulator-0.1.1-Linux.tar.gz
-          name: "ubuntu-latest-${{ matrix.cc }}-${{ matrix.build_type }}.tar.gz"
+          name: ubuntu-latest-${{ matrix.cc }}-${{ matrix.build_type }}.tar.gz
           if-no-files-found: 'error'
 
   release:
@@ -102,7 +102,7 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: "ubuntu-latest-${{ matrix.cc }}-${{ matrix.build_type }}.tar.gz"
+          name: ubuntu-latest-${{ matrix.cc }}-${{ matrix.build_type }}.tar.gz
           path: ./
 
       - name: Download URL
@@ -110,7 +110,9 @@ jobs:
         with:
           name: upload_url
           path: ./
-      - id: set_upload_url
+
+      - name: Set upload URL
+        id: set_upload_url
         run: |
           upload_url=`cat ./upload_url`
           echo ::set-output name=upload_url::$upload_url
@@ -122,6 +124,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.set_upload_url.outputs.upload_url }}
-          asset_path: "./ubuntu-latest-${{ matrix.cc }}-${{ matrix.build_type }}.tar.gz"
-          asset_name: "ubuntu-latest-${{ matrix.build_type }}.tar.gz"
+          asset_path: ./ubuntu-latest-${{ matrix.cc }}-${{ matrix.build_type }}.tar.gz
+          asset_name: ubuntu-latest-${{ matrix.build_type }}.tar.gz
           asset_content_type: application/x-gtar
