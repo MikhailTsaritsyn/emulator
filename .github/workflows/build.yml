@@ -78,8 +78,7 @@ jobs:
           prerelease: false
 
       - name: Store Release url
-        run: |
-          echo "${{ steps.create_release.outputs.upload_url }}" > ./upload_url
+        run: echo "${{ steps.create_release.outputs.upload_url }}" > ./upload_url
 
       - uses: actions/upload-artifact@v4
         with:
@@ -101,7 +100,7 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v1
         with:
-          name: ubuntu-latest-${{ matrix.cc }}-${{ matrix.build_type }}.tar.gz
+          name: "ubuntu-latest-${{ matrix.cc }}-${{ matrix.build_type }}.tar.gz"
           path: ./
 
       - name: Download URL
@@ -121,6 +120,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.set_upload_url.outputs.upload_url }}
-          asset_path: ./ubuntu-latest-${{ matrix.cc }}-${{ matrix.build_type }}.tar.gz
-          asset_name: ubuntu-latest-${{ matrix.build_type }}.tar.gz
+          asset_path: "./ubuntu-latest-${{ matrix.cc }}-${{ matrix.build_type }}.tar.gz"
+          asset_name: "ubuntu-latest-${{ matrix.build_type }}.tar.gz"
           asset_content_type: application/x-gtar
