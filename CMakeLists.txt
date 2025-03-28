@@ -12,6 +12,7 @@ target_sources(emulator_core
     BASE_DIRS include
     FILES
     include/Opcode.hpp
+    include/StatusRegister.hpp
     PRIVATE
     src/Opcode.cpp
 )
