@@ -28,6 +28,17 @@ namespace internal {
 }
 
 /**
+ * @brief Encode two decimal digits into a binary 8-bit number
+ *
+ * @copydetails decode_decimal
+ */
+[[nodiscard]] constexpr uint8_t encode_decimal(const uint8_t high_digit, const uint8_t low_digit) noexcept {
+    assert(high_digit <= 9);
+    assert(low_digit <= 9);
+    return (high_digit << 4) | low_digit;
+}
+
+/**
  * @brief Add two numbers in range [0, 9] inclusively with carry
  *
  * @param[in] a The first number
@@ -63,7 +74,7 @@ namespace internal {
     const auto low_digit_sum  = add_decimal_digits(low_digit_a, low_digit_b, carry);
     const auto high_digit_sum = add_decimal_digits(high_digit_a, high_digit_b, carry);
 
-    return (high_digit_sum << 4) | low_digit_sum;
+    return encode_decimal(high_digit_sum, low_digit_sum);
 }
 
 /**
@@ -83,6 +94,63 @@ namespace internal {
     carry = result > std::numeric_limits<uint8_t>::max();
     return static_cast<uint8_t>(result);
 }
+
+/**
+ * @brief Subtract two unsigned 8-bit integers with borrow
+ *
+ * @param[in] a The number to subtract from
+ * @param[in] b The number to subtract
+ * @param[in, out] borrow Its initial value is subtracted the result.
+ *                        If the result is negative, the borrow is set, and reset otherwise.
+ *
+ * @return Unsigned 8-bit result modulo 256
+ */
+[[nodiscard]] constexpr uint8_t subtract_binary(const uint8_t a, const uint8_t b, bool &borrow) noexcept {
+    const auto result = static_cast<int>(a) - static_cast<int>(b) - (borrow ? 1 : 0);
+    borrow            = result < 0;
+    return static_cast<uint8_t>(result);
+}
+
+/**
+ * @brief Subtract two numbers in range [0, 9] inclusively with borrow
+ *
+ * @param[in] a The number to subtract from
+ * @param[in] b The number to subtract
+ * @param[in, out] borrow Is subtracted from the result.
+ *                        Is then set if the result is negative and reset otherwise.
+ *
+ * @return The difference between two numbers modulo 10
+ */
+[[nodiscard]] constexpr uint8_t subtract_decimal_digits(const uint8_t a, const uint8_t b, bool &borrow) noexcept {
+    assert(a <= 9);
+    assert(b <= 9);
+    const auto result = static_cast<int>(a) - static_cast<int>(b) - (borrow ? 1 : 0);
+    borrow            = result < 0;
+    // Not sure how C++'s modulo operation treats negative numbers, so it's made positive to be sure
+    return static_cast<uint8_t>((result + 10) % 10);
+}
+
+/**
+ * @brief Subtract two binary-coded unsigned decimal 8-bit integers with borrow
+ *
+ * Each of the operands is considered to be a binary-codd decimal as described in @link decode_decimal @endlink.
+ *
+ * @param[in] a The number to subtract from
+ * @param[in] b The number to subtract
+ * @param[in, out] borrow Its initial value is subtracted from the result.
+ *                        If the result is negative, the carry is set, and reset otherwise.
+ *
+ * @return Binary-coded decimal result modulo 100
+ */
+[[nodiscard]] constexpr uint8_t subtract_decimal(const uint8_t a, const uint8_t b, bool &borrow) noexcept {
+    const auto [high_digit_a, low_digit_a] = decode_decimal(a);
+    const auto [high_digit_b, low_digit_b] = decode_decimal(b);
+
+    const auto low_digit_sum  = subtract_decimal_digits(low_digit_a, low_digit_b, borrow);
+    const auto high_digit_sum = subtract_decimal_digits(high_digit_a, high_digit_b, borrow);
+
+    return encode_decimal(high_digit_sum, low_digit_sum);
+}
 } // namespace internal
 
 uint8_t add(const uint8_t a, const uint8_t b, StatusRegister &sr) noexcept {
@@ -90,6 +158,18 @@ uint8_t add(const uint8_t a, const uint8_t b, StatusRegister &sr) noexcept {
     const auto result = sr.decimal ? internal::add_decimal(a, b, carry) : internal::add_binary(a, b, carry);
 
     sr.carry    = carry;
+    sr.overflow = (result & 0x80) != (a & 0x80); // Compare the sign bits
+    sr.negative = result & 0x80;
+    sr.zero     = result == 0;
+
+    return result;
+}
+
+uint8_t subtract(const uint8_t a, const uint8_t b, StatusRegister &sr) noexcept {
+    bool borrow       = !sr.carry;
+    const auto result = sr.decimal ? internal::subtract_decimal(a, b, borrow) : internal::subtract_binary(a, b, borrow);
+
+    sr.carry    = !borrow;
     sr.overflow = (result & 0x80) != (a & 0x80); // Compare the sign bits
     sr.negative = result & 0x80;
     sr.zero     = result == 0;
