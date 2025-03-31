@@ -7,37 +7,40 @@
 namespace emulator::mos_6502::test {
 using TestParameters = std::tuple<uint8_t, bool, uint8_t>;
 
-// TODO: Move all initialization to the SetUp()
-// TODO: Move the operation itself to the SetUp() and store the result in a field?
-
 struct BitManip : testing::TestWithParam<TestParameters> {
     StatusRegister sr;
 
+    uint8_t input    = 0;
+    bool input_carry = false;
+    uint8_t output   = 0;
+
     void SetUp() override {
+        std::tie(input, input_carry, output) = GetParam();
+
         sr = { .negative  = false,
                .overflow  = false,
                .break_    = false,
                .decimal   = false,
                .interrupt = false,
                .zero      = false,
-               .carry     = false };
+               .carry     = input_carry };
+    }
+
+    void TearDown() override {
+        EXPECT_EQ(sr.negative, static_cast<int8_t>(output) < 0);
+        EXPECT_FALSE(sr.overflow);
+        EXPECT_FALSE(sr.break_);
+        EXPECT_FALSE(sr.decimal);
+        EXPECT_FALSE(sr.interrupt);
+        EXPECT_EQ(sr.zero, output == 0);
     }
 };
 
 struct ShiftRight : BitManip {};
 
 TEST_P(ShiftRight, ValueAndFlags) {
-    const auto [a, carry, result] = GetParam();
-    sr.carry                      = carry;
-    EXPECT_EQ(ALU::shift_right(a, sr), result);
-
-    EXPECT_EQ(sr.negative, static_cast<int8_t>(result) < 0);
-    EXPECT_FALSE(sr.overflow);
-    EXPECT_FALSE(sr.break_);
-    EXPECT_FALSE(sr.decimal);
-    EXPECT_FALSE(sr.interrupt);
-    EXPECT_EQ(sr.zero, result == 0);
-    EXPECT_EQ(sr.carry, a & 1);
+    EXPECT_EQ(ALU::shift_right(input, sr), output);
+    EXPECT_EQ(sr.carry, input & 1);
 }
 
 INSTANTIATE_TEST_SUITE_P(Values,
@@ -55,17 +58,8 @@ INSTANTIATE_TEST_SUITE_P(Values,
 struct ShiftLeft : BitManip {};
 
 TEST_P(ShiftLeft, ValueAndFlags) {
-    const auto [a, carry, result] = GetParam();
-    sr.carry = carry;
-    EXPECT_EQ(ALU::shift_left(a, sr), result);
-
-    EXPECT_EQ(sr.negative, static_cast<int8_t>(result) < 0);
-    EXPECT_FALSE(sr.overflow);
-    EXPECT_FALSE(sr.break_);
-    EXPECT_FALSE(sr.decimal);
-    EXPECT_FALSE(sr.interrupt);
-    EXPECT_EQ(sr.zero, result == 0);
-    EXPECT_EQ(sr.carry, static_cast<bool>(a & 0x80));
+    EXPECT_EQ(ALU::shift_left(input, sr), output);
+    EXPECT_EQ(sr.carry, static_cast<bool>(input & 0x80));
 }
 
 INSTANTIATE_TEST_SUITE_P(Values,
@@ -83,17 +77,8 @@ INSTANTIATE_TEST_SUITE_P(Values,
 struct RotateLeft : BitManip {};
 
 TEST_P(RotateLeft, ValueAndFlags) {
-    const auto [a, carry, result] = GetParam();
-    sr.carry                      = carry;
-    EXPECT_EQ(ALU::rotate_left(a, sr), result);
-
-    EXPECT_EQ(sr.negative, static_cast<int8_t>(result) < 0);
-    EXPECT_FALSE(sr.overflow);
-    EXPECT_FALSE(sr.break_);
-    EXPECT_FALSE(sr.decimal);
-    EXPECT_FALSE(sr.interrupt);
-    EXPECT_EQ(sr.zero, result == 0);
-    EXPECT_EQ(sr.carry, static_cast<bool>(a & 0x80));
+    EXPECT_EQ(ALU::rotate_left(input, sr), output);
+    EXPECT_EQ(sr.carry, static_cast<bool>(input & 0x80));
 }
 
 INSTANTIATE_TEST_SUITE_P(Values,
@@ -120,17 +105,8 @@ INSTANTIATE_TEST_SUITE_P(Values,
 struct RotateRight : BitManip {};
 
 TEST_P(RotateRight, ValueAndFlags) {
-    const auto [a, carry, result] = GetParam();
-    sr.carry                      = carry;
-    EXPECT_EQ(ALU::rotate_right(a, sr), result);
-
-    EXPECT_EQ(sr.negative, static_cast<int8_t>(result) < 0);
-    EXPECT_FALSE(sr.overflow);
-    EXPECT_FALSE(sr.break_);
-    EXPECT_FALSE(sr.decimal);
-    EXPECT_FALSE(sr.interrupt);
-    EXPECT_EQ(sr.zero, result == 0);
-    EXPECT_EQ(sr.carry, static_cast<bool>(a & 0x01));
+    EXPECT_EQ(ALU::rotate_right(input, sr), output);
+    EXPECT_EQ(sr.carry, static_cast<bool>(input & 0x01));
 }
 
 INSTANTIATE_TEST_SUITE_P(Values,
