@@ -75,6 +75,13 @@ namespace emulator::mos_6502::ALU {
  * @copydoc logical_and
  */
 [[nodiscard]] uint8_t logical_or(uint8_t a, uint8_t b, StatusRegister &sr) noexcept;
+
+/**
+ * @brief XOR two unsigned 8-bit integers
+ *
+ * @copydoc logical_and
+ */
+[[nodiscard]] uint8_t logical_xor(uint8_t a, uint8_t b, StatusRegister &sr) noexcept;
 } // namespace emulator::mos_6502::ALU
 
 #endif //EMULATOR_MOS_6502_ALU_HPP

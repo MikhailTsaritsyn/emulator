@@ -253,6 +253,13 @@ enum class Instruction : uint8_t {
 
     /**
      * @brief Exclusive OR Memory with Accumulator
+     *
+     * The EOR instruction transfers the memory and the accumulator to the adder,
+     * which performs a binary exclusive OR on a bit-by-bit basis and stores the result in the accumulator.
+     *
+     * This instruction affects the Status Register.
+     * - The Negative flag is set if the result in the accumulator has bit 7 on, otherwise it is reset.
+     * - The Zero flag is set if the result in the Accumulator is 0, otherwise it is reset.
      */
     EOR,
 
