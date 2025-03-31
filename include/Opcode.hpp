@@ -136,11 +136,26 @@ enum class Instruction : uint8_t {
 
     /**
      * @brief AND Memory with Accumulator
+     *
+     * The AND instruction transfers the Accumulator and Memory to the adder, which performs a bit-by-bit AND operation
+     * and stores the result back in the accumulator.
+     *
+     * This instruction affects the Status Register.
+     * - The Negative flag is set if the result in the accumulator has bit 7 on, otherwise it is reset.
+     * - The Zero flag is set if the result in the Accumulator is 0, otherwise it is reset.
      */
     AND,
 
     /**
      * @brief Shift left one bit, Memory or Accumulator
+     *
+     * The shift left instruction shifts either the Accumulator or the address Memory location one bit to the left.
+     * Bit 0 is always set to 0, and bit 7's output is always contained in the carry flag.
+     *
+     * This instruction affects the Status Register.
+     * - The Carry flag is set equal to bit 7 of the input.
+     * - The Negative flag is set to result bit 7 (input bit 6).
+     * - The Zero flag is set if the result of the shift is zero and reset otherwise.
      */
     ASL,
 
@@ -246,6 +261,13 @@ enum class Instruction : uint8_t {
 
     /**
      * @brief Exclusive OR Memory with Accumulator
+     *
+     * The EOR instruction transfers the memory and the accumulator to the adder,
+     * which performs a binary exclusive OR on a bit-by-bit basis and stores the result in the accumulator.
+     *
+     * This instruction affects the Status Register.
+     * - The Negative flag is set if the result in the accumulator has bit 7 on, otherwise it is reset.
+     * - The Zero flag is set if the result in the Accumulator is 0, otherwise it is reset.
      */
     EOR,
 
@@ -291,6 +313,15 @@ enum class Instruction : uint8_t {
 
     /**
      * @brief Shift right one bit, Memory or Accumulator
+     *
+     * This instruction shifts either the accumulator or a specified memory location obe bit to the right,
+     * with the higher bit of the result always being set to 0.
+     * The low bit which is shifted out of the field is stored in the carry flag.
+     *
+     * This instruction affects the Status Register.
+     * - The Carry flag is set equal to bit 0 of the input.
+     * - The Negative flag is always reset.
+     * - The Zero flag is set if the result of the shift is zero and reset otherwise.
      */
     LSR,
 
@@ -301,6 +332,13 @@ enum class Instruction : uint8_t {
 
     /**
      * @brief OR Memory with Accumulator
+     *
+     * The ORA instruction transfers the Memory and the Accumulator to the adder,
+     * which performs a binary OR on a bit-by-bit basis and stores the result in the Accumulator.
+     *
+     * This instruction affects the Status Register.
+     * - The Negative flag is set if the result in the accumulator has bit 7 on, otherwise it is reset.
+     * - The Zero flag is set if the result in the Accumulator is 0, otherwise it is reset.
      */
     ORA,
 
@@ -326,11 +364,27 @@ enum class Instruction : uint8_t {
 
     /**
      * @brief Rotate one bit left, Memory or Accumulator
+     *
+     * The rotate left instruction shifts either the Accumulator or addressed Memory left one bit,
+     * with the input carry flag being stored in bit 0, and input 7 being stored in the output carry flag.
+     *
+     * This instruction affects the Status Register.
+     * - The Carry flag is set equal to input bit 7.
+     * - The Negative flag is set equal to input bit 6.
+     * - The Zero flag is set if the result is zero, otherwise it is reset.
      */
     ROL,
 
     /**
      * @brief Rotate one bit right, Memory or Accumulator
+     *
+     * The rotate right instruction shifts either the Accumulator or addressed Memory right one bit
+     * with bit 0 shifted into the carry and carry shifted into bit 7.
+     *
+     * This instruction affects the Status Register.
+     * - The Carry flag is set equal to input bit 0.
+     * - The Negative flag is set equal to input carry.
+     * - The Zero flag is set if the result is zero, otherwise it is reset.
      */
     ROR,
 

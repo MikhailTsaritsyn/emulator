@@ -176,4 +176,68 @@ uint8_t subtract(const uint8_t a, const uint8_t b, StatusRegister &sr) noexcept 
 
     return result;
 }
+
+uint8_t logical_and(const uint8_t a, const uint8_t b, StatusRegister &sr) noexcept {
+    const auto result = a & b;
+
+    sr.negative = result & 0x80;
+    sr.zero     = result == 0;
+    return static_cast<uint8_t>(result);
+}
+
+uint8_t logical_or(const uint8_t a, const uint8_t b, StatusRegister &sr) noexcept {
+    const auto result = a | b;
+
+    sr.negative = result & 0x80;
+    sr.zero     = result == 0;
+    return static_cast<uint8_t>(result);
+}
+
+uint8_t logical_xor(const uint8_t a, const uint8_t b, StatusRegister &sr) noexcept {
+    const auto result = a ^ b;
+
+    sr.negative = result & 0x80;
+    sr.zero     = result == 0;
+    return static_cast<uint8_t>(result);
+}
+
+uint8_t shift_right(uint8_t a, StatusRegister &sr) noexcept {
+    sr.carry = a & 1; // store the rightmost bit
+    a >>= 1;
+
+    sr.negative = false;
+    sr.zero     = a == 0;
+    return a;
+}
+
+uint8_t shift_left(uint8_t a, StatusRegister &sr) noexcept {
+    sr.carry = a & 0x80; // store the leftmost bit
+    a <<= 1;
+
+    sr.negative = a & 0x80;
+    sr.zero     = a == 0;
+    return a;
+}
+
+uint8_t rotate_left(uint8_t a, StatusRegister &sr) noexcept {
+    const bool output_carry = a & 0x80; // store the leftmost bit
+    a <<= 1;
+    if (sr.carry) a |= 1; // set the rightmost bit
+
+    sr.carry    = output_carry;
+    sr.negative = a & 0x80;
+    sr.zero     = a == 0;
+    return a;
+}
+
+uint8_t rotate_right(uint8_t a, StatusRegister &sr) noexcept {
+    const bool output_carry = a & 1; // store the rightmost bit
+    a >>= 1;
+    if (sr.carry) a |= 0x80; // set the leftmost bit
+
+    sr.carry    = output_carry;
+    sr.negative = a & 0x80;
+    sr.zero     = a == 0;
+    return a;
+}
 } // namespace emulator::mos_6502::ALU
