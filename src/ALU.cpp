@@ -209,4 +209,13 @@ uint8_t shift_right(uint8_t a, StatusRegister &sr) noexcept {
     sr.zero     = a == 0;
     return a;
 }
+
+uint8_t shift_left(uint8_t a, StatusRegister &sr) noexcept {
+    sr.carry = a & 0x80;
+    a <<= 1;
+
+    sr.negative = a & 0x80;
+    sr.zero     = a == 0;
+    return a;
+}
 } // namespace emulator::mos_6502::ALU

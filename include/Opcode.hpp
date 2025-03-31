@@ -148,6 +148,14 @@ enum class Instruction : uint8_t {
 
     /**
      * @brief Shift left one bit, Memory or Accumulator
+     *
+     * The shift left instruction shifts either the Accumulator or the address Memory location one bit to the left.
+     * Bit 0 is always set to 0, and bit 7's output is always contained in the carry flag.
+     *
+     * This instruction affects the Status Register.
+     * - The Carry flag is set equal to bit 7 of the input.
+     * - The Negative flag is set to result bit 7 (input bit 6).
+     * - The Zero flag is set if the result of the shift is zero and reset otherwise.
      */
     ASL,
 
