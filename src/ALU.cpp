@@ -229,4 +229,15 @@ uint8_t rotate_left(uint8_t a, StatusRegister &sr) noexcept {
     sr.zero     = a == 0;
     return a;
 }
+
+uint8_t rotate_right(uint8_t a, StatusRegister &sr) noexcept {
+    const bool output_carry = a & 1; // store the rightmost bit
+    a >>= 1;
+    if (sr.carry) a |= 0x80; // set the leftmost bit
+
+    sr.carry    = output_carry;
+    sr.negative = a & 0x80;
+    sr.zero     = a == 0;
+    return a;
+}
 } // namespace emulator::mos_6502::ALU

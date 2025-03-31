@@ -116,4 +116,41 @@ INSTANTIATE_TEST_SUITE_P(Values,
                                            TestParameters{ 0b10011000, true, 0b00110001 },
                                            TestParameters{ 0b11111111, false, 0b11111110 },
                                            TestParameters{ 0b11111111, true , 0b11111111}));
+
+struct RotateRight : BitManip {};
+
+TEST_P(RotateRight, ValueAndFlags) {
+    const auto [a, carry, result] = GetParam();
+    sr.carry                      = carry;
+    EXPECT_EQ(ALU::rotate_right(a, sr), result);
+
+    EXPECT_EQ(sr.negative, static_cast<int8_t>(result) < 0);
+    EXPECT_FALSE(sr.overflow);
+    EXPECT_FALSE(sr.break_);
+    EXPECT_FALSE(sr.decimal);
+    EXPECT_FALSE(sr.interrupt);
+    EXPECT_EQ(sr.zero, result == 0);
+    EXPECT_EQ(sr.carry, static_cast<bool>(a & 0x01));
+}
+
+INSTANTIATE_TEST_SUITE_P(Values,
+                         RotateRight,
+                         ::testing::Values(TestParameters{ 0b00000000, false, 0b00000000 },
+                                           TestParameters{ 0b00000000, true, 0b10000000 },
+                                           TestParameters{ 0b10000000, false, 0b01000000 },
+                                           TestParameters{ 0b10000000, true, 0b11000000 },
+                                           TestParameters{ 0b01000000, false, 0b00100000 },
+                                           TestParameters{ 0b01000000, true, 0b10100000 },
+                                           TestParameters{ 0b11000011, false, 0b01100001 },
+                                           TestParameters{ 0b11000011, true, 0b11100001 },
+                                           TestParameters{ 0b01010101, false, 0b00101010 },
+                                           TestParameters{ 0b01010101, true, 0b10101010 },
+                                           TestParameters{ 0b10101010, false, 0b01010101 },
+                                           TestParameters{ 0b10101010, true, 0b11010101 },
+                                           TestParameters{ 0b00000001, false, 0b00000000 },
+                                           TestParameters{ 0b00000001, true, 0b10000000 },
+                                           TestParameters{ 0b10011000, false, 0b01001100 },
+                                           TestParameters{ 0b10011000, true, 0b11001100 },
+                                           TestParameters{ 0b11111111, false, 0b01111111 },
+                                           TestParameters{ 0b11111111, true, 0b11111111 }));
 } // namespace emulator::mos_6502::test
