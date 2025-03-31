@@ -136,6 +136,13 @@ enum class Instruction : uint8_t {
 
     /**
      * @brief AND Memory with Accumulator
+     *
+     * The AND instruction transfers the Accumulator and Memory to the adder, which performs a bit-by-bit AND operation
+     * and stores the result back in the accumulator.
+     *
+     * This instruction affects the Status Register.
+     * - The Negative flag is set if the result in the accumulator has bit 7 on, otherwise it is reset.
+     * - The Zero flag is set if the result in the Accumulator is 0, otherwise it is reset.
      */
     AND,
 
