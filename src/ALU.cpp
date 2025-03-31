@@ -200,4 +200,13 @@ uint8_t logical_xor(const uint8_t a, const uint8_t b, StatusRegister &sr) noexce
     sr.zero     = result == 0;
     return static_cast<uint8_t>(result);
 }
+
+uint8_t shift_right(uint8_t a, StatusRegister &sr) noexcept {
+    sr.carry = a & 1; // store the rightmost bit
+    a >>= 1;
+
+    sr.negative = false;
+    sr.zero     = a == 0;
+    return a;
+}
 } // namespace emulator::mos_6502::ALU

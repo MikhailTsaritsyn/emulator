@@ -82,6 +82,19 @@ namespace emulator::mos_6502::ALU {
  * @copydoc logical_and
  */
 [[nodiscard]] uint8_t logical_xor(uint8_t a, uint8_t b, StatusRegister &sr) noexcept;
+
+/**
+ * @brief Shift an unsigned 8-bit integer right one bit
+ *
+ * @param[in] a The number to be shifted.
+ * @param[out] sr Does not affect the operation. Some of its flags are set as a result.
+ *
+ * @post The status register is updated at the end of the operation.
+ *       - The carry flag is set equal to bit 0 of the input.
+ *       - The negative flag is always reset.
+ *       - The zero flag is set if the result is zero, otherwise it is reset.
+ */
+[[nodiscard]] uint8_t shift_right(uint8_t a, StatusRegister &sr) noexcept;
 } // namespace emulator::mos_6502::ALU
 
 #endif //EMULATOR_MOS_6502_ALU_HPP

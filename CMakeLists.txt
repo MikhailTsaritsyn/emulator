@@ -37,6 +37,7 @@ add_executable(emulator_test
     tests/decimal_addition.cpp
     tests/binary_subtraction.cpp
     tests/decimal_subtraction.cpp
+    tests/logical_shift.cpp
 )
 target_link_libraries(emulator_test PRIVATE emulator_core gtest gtest_main)
 

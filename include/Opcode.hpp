@@ -305,6 +305,15 @@ enum class Instruction : uint8_t {
 
     /**
      * @brief Shift right one bit, Memory or Accumulator
+     *
+     * This instruction shifts either the accumulator or a specified memory location obe bit to the right,
+     * with the higher bit of the result always being set to 0.
+     * The low bit which is shifted out of the field is stored in the carry flag.
+     *
+     * This instruction affects the Status Register.
+     * - The Carry flag is set equal to bit 0 of the input.
+     * - The Negative flag is always reset.
+     * - The Zero flag is set if the result of the shift is zero and reset otherwise.
      */
     LSR,
 
