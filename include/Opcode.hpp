@@ -120,6 +120,17 @@ enum struct Addressing : uint8_t {
 enum class Instruction : uint8_t {
     /**
      * @brief Add Memory to Accumulator with Carry
+     *
+     * This instruction adds the value of memory and carry from the previous operation to the value of the accumulator
+     * and stores the result in the accumulator.
+     *
+     * This instruction affects the Status Register.
+     * - The carry flag is set when the sum of a binary addition exceeds 255
+     *   or when the sum of a decimal addition exceeds 99, otherwise it is reset.
+     * - The overflow flag is set whe the sign or bit 7 is changed due to result exceeding +127 or -128,
+     *   otherwise it is reset.
+     * - The negative flag is set if the accumulator result contains bit 7 on, otherwise it is reset.
+     * - The zero flag is set if the accumulator result is zero, otherwise it is reset.
      */
     ADC,
 
@@ -335,6 +346,20 @@ enum class Instruction : uint8_t {
 
     /**
      * @brief Subtract Memory from Accumulator with borrow
+     *
+     * This instruction subtracts the value of memory and borrow from the value of the Accumulator,
+     * using two's complement arithmetic, and stores the result in the Accumulator.
+     * Borrow is defined as the carry flag complemented, therefore, a resultant carry flag indicates that
+     * a borrow has not occurred.
+     *
+     * This instruction affects the Status Register.
+     * - The Carry flag is set if the result is greater than or equal to zero,
+     *   otherwise it is reset indicating a borrow.
+     * - The Overflow flag is set when the result exceeds +127 or -127, otherwise it is reset.
+     * - The Negative flag is set if the result in the Accumulator has bit 7 on, otherwise it is reset.
+     * - The Zero flag is set if the result in the accumulator is zero, otherwise it is reset.
+     *
+     * @note The programmer must set the Carry flag by using the SEC instruction before using the SBC instruction.
      */
     SBC,
 

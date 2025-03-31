@@ -11,8 +11,11 @@ target_sources(emulator_core
     TYPE HEADERS
     BASE_DIRS include
     FILES
+    include/ALU.hpp
     include/Opcode.hpp
+    include/StatusRegister.hpp
     PRIVATE
+    src/ALU.cpp
     src/Opcode.cpp
 )
 
@@ -30,6 +33,10 @@ find_package(GTest REQUIRED)
 # Create test executable
 add_executable(emulator_test
     tests/Opcode.cpp
+    tests/binary_addition.cpp
+    tests/decimal_addition.cpp
+    tests/binary_subtraction.cpp
+    tests/decimal_subtraction.cpp
 )
 target_link_libraries(emulator_test PRIVATE emulator_core gtest gtest_main)
 
