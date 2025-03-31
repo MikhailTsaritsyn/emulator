@@ -308,6 +308,13 @@ enum class Instruction : uint8_t {
 
     /**
      * @brief OR Memory with Accumulator
+     *
+     * The ORA instruction transfers the Memory and the Accumulator to the adder,
+     * which performs a binary OR on a bit-by-bit basis and stores the result in the Accumulator.
+     *
+     * This instruction affects the Status Register.
+     * - The Negative flag is set if the result in the accumulator has bit 7 on, otherwise it is reset.
+     * - The Zero flag is set if the result in the Accumulator is 0, otherwise it is reset.
      */
     ORA,
 

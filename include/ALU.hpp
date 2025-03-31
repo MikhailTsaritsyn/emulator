@@ -68,6 +68,13 @@ namespace emulator::mos_6502::ALU {
  *       - The zero flag is set if the result is zero, otherwise it is reset.
  */
 [[nodiscard]] uint8_t logical_and(uint8_t a, uint8_t b, StatusRegister &sr) noexcept;
+
+/**
+ * @brief OR two unsigned 8-bit integers
+ *
+ * @copydoc logical_and
+ */
+[[nodiscard]] uint8_t logical_or(uint8_t a, uint8_t b, StatusRegister &sr) noexcept;
 } // namespace emulator::mos_6502::ALU
 
 #endif //EMULATOR_MOS_6502_ALU_HPP
