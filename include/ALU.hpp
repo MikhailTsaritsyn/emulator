@@ -108,6 +108,24 @@ namespace emulator::mos_6502::ALU {
  *       - The zero flag is set if the result of the shift is zero and reset otherwise.
  */
 [[nodiscard]] uint8_t shift_left(uint8_t a, StatusRegister &sr) noexcept;
+
+/**
+ * @brief Rotate an unsigned 8-bit integer left one bit
+ *
+ * The input carry goes into the rightmost bit.
+ * The leftmost bit goes into the output carry.
+ *
+ * @param[in] a Value to be rotated
+ * @param[in, out] sr Its carry is used as an input and is put to the rightmost bit of the result.
+ *                    The output carry is equal to the leftmost bit of the input value.
+ *                    Some other flags are set as well.
+ *
+ * @post The status register is updated at the end of the operation.
+ *       - The carry flag is set equal to input bit 7.
+ *       - The negative flag is set equal to input bit 6.
+ *       - The zero flag is set if the result is zero, otherwise it is reset.
+ */
+[[nodiscard]] uint8_t rotate_left(uint8_t a, StatusRegister &sr) noexcept;
 } // namespace emulator::mos_6502::ALU
 
 #endif //EMULATOR_MOS_6502_ALU_HPP

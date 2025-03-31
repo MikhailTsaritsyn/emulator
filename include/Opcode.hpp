@@ -364,6 +364,14 @@ enum class Instruction : uint8_t {
 
     /**
      * @brief Rotate one bit left, Memory or Accumulator
+     *
+     * The rotate left instruction shifts either the Accumulator or addressed Memory left one bit,
+     * with the input carry flag being stored in bit 0, and input 7 being stored in the output carry flag.
+     *
+     * This instruction affects the Status Register.
+     * - The Carry flag is set equal to input bit 7.
+     * - The Negative flag is set equal to input bit 6.
+     * - The Zero flag is set if the result is zero, otherwise it is reset.
      */
     ROL,
 
