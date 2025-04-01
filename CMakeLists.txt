@@ -33,10 +33,9 @@ find_package(GTest REQUIRED)
 # Create test executable
 add_executable(emulator_test
     tests/Opcode.cpp
-    tests/decimal_addition.cpp
-    tests/decimal_subtraction.cpp
     tests/bit_manipulations.cpp
     tests/binary_arithmetic.cpp
+    tests/decimal_arithmetic.cpp
 )
 target_link_libraries(emulator_test PRIVATE emulator_core gtest gtest_main)
 
