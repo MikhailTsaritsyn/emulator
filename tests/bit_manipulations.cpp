@@ -38,7 +38,7 @@ struct BitManip : testing::TestWithParam<TestParameters> {
 
 struct ShiftRight : BitManip {};
 
-TEST_P(ShiftRight, ValueAndFlags) {
+TEST_P(ShiftRight, Test) {
     EXPECT_EQ(ALU::shift_right(input, sr), output);
     EXPECT_EQ(sr.carry, input & 1);
 }
@@ -57,7 +57,7 @@ INSTANTIATE_TEST_SUITE_P(Values,
 
 struct ShiftLeft : BitManip {};
 
-TEST_P(ShiftLeft, ValueAndFlags) {
+TEST_P(ShiftLeft, Test) {
     EXPECT_EQ(ALU::shift_left(input, sr), output);
     EXPECT_EQ(sr.carry, static_cast<bool>(input & 0x80));
 }
@@ -76,7 +76,7 @@ INSTANTIATE_TEST_SUITE_P(Values,
 
 struct RotateLeft : BitManip {};
 
-TEST_P(RotateLeft, ValueAndFlags) {
+TEST_P(RotateLeft, Test) {
     EXPECT_EQ(ALU::rotate_left(input, sr), output);
     EXPECT_EQ(sr.carry, static_cast<bool>(input & 0x80));
 }
@@ -104,7 +104,7 @@ INSTANTIATE_TEST_SUITE_P(Values,
 
 struct RotateRight : BitManip {};
 
-TEST_P(RotateRight, ValueAndFlags) {
+TEST_P(RotateRight, Test) {
     EXPECT_EQ(ALU::rotate_right(input, sr), output);
     EXPECT_EQ(sr.carry, static_cast<bool>(input & 0x01));
 }
