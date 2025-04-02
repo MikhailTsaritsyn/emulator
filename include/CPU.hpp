@@ -4,6 +4,7 @@
 
 #ifndef EMULATOR_MOS_6502_CPU_HPP
 #define EMULATOR_MOS_6502_CPU_HPP
+#include "PulseGenerator.hpp"
 #include "StatusRegister.hpp"
 #include <cstdint>
 
@@ -31,7 +32,21 @@ public:
      */
     static constexpr uint16_t IRQ = 0xFFFE;
 
+    template <typename ClockT> explicit CPU(ClockT clock) : _pulse_gen(clock) {}
+
+    /**
+     * @brief Start the CPU
+     *
+     * It enters an endless loop executing instructions one by one.
+     */
+    [[noreturn]] void start() noexcept;
+
 private:
+    /**
+     * @brief Block execution until the next high pulse arrives from @link _pulse_gen @endlink
+     */
+    void wait_for_clock() const noexcept;
+
     /**
      * @brief Program counter
      *
@@ -105,6 +120,13 @@ private:
      * @note All arithmetic operations update the Z, N, C and V flags.
      */
     StatusRegister SR{};
+
+    /**
+     * @brief Pulse generator of the CPU.
+     *
+     * Execution of the next instruction can only start when the pulse is high.
+     */
+    PulseGenerator _pulse_gen;
 };
 
 } // namespace emulator::mos_6502

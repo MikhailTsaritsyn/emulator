@@ -13,6 +13,7 @@ target_sources(emulator_core
 
     FILES
     include/ALU.hpp
+    include/CPU.hpp
     include/Opcode.hpp
     include/PeriodicPulse.hpp
     include/PulseGenerator.hpp
@@ -20,7 +21,7 @@ target_sources(emulator_core
 
     PRIVATE
     src/ALU.cpp
-    src/PulseGenerator.cpp
+    src/CPU.cpp
     src/Opcode.cpp
     src/PeriodicPulse.cpp
     src/PulseGenerator.cpp
