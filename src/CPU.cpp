@@ -7,9 +7,7 @@
 
 namespace emulator::mos_6502 {
 
-// TODO: Frequency with units?
-// TODO(optimization): Resolving clock polymorphism takes a significant amount of time.
-//                     Use something simpler?
+CPU::CPU(const std::chrono::nanoseconds clock_period) noexcept : _clock(clock_period) {}
 
 void CPU::start() noexcept {
     auto prev_time = std::chrono::high_resolution_clock::now();
@@ -38,5 +36,5 @@ void CPU::terminate() noexcept { _terminate.test_and_set(); }
 
 double CPU::frequency() const noexcept { return _frequency; }
 
-void CPU::wait_for_clock() const noexcept { while (!_pulse_gen.value()); }
+void CPU::wait_for_clock() noexcept { while (!_clock.value()); }
 } // namespace emulator::mos_6502

@@ -6,10 +6,6 @@
 #define EMULATOR_MOS_6502_PERIODIC_PULSE_HPP
 #include <chrono>
 
-// TODO(optimization): Pass current time to the value().
-//                     When no CPU operations are performed, call to std::chrono::...::now() consumes most of the time.
-//                     It is done twice: in the CPU loop and in the clock
-
 namespace emulator::mos_6502 {
 /**
  * @brief A device generating short pulses at a predefined rate
@@ -26,7 +22,7 @@ namespace emulator::mos_6502 {
  *   period
  * @endcode
  *
- * Instead, the high pulse can only be generated when @link PeriodicPulse::value @endlink is called.
+ * Instead, the high pulse can only be generated when @link Clock::value @endlink is called.
  * Therefore, the generator only guarantees that the distance between two consecutive high pulses is not less
  * than the period, but it is allowed to be greater:
  * @code{text}
@@ -40,10 +36,12 @@ namespace emulator::mos_6502 {
  *                       high pulse ready
  * @endcode
  * We see that pulses 3 and 4 are generated with delays, because queries did not happen at the correct times.
+ *
+ * @note If the period equals zero, the value of the pulse is high for every query.
  */
-class PeriodicPulse {
+class Clock {
 public:
-    explicit PeriodicPulse(std::chrono::nanoseconds period) noexcept;
+    explicit Clock(std::chrono::nanoseconds period) noexcept;
 
     /**
      * @return The value of the pulse at the current moment

@@ -4,8 +4,9 @@
 
 #ifndef EMULATOR_MOS_6502_CPU_HPP
 #define EMULATOR_MOS_6502_CPU_HPP
-#include "PulseGenerator.hpp"
+#include "Clock.hpp"
 #include "StatusRegister.hpp"
+#include <atomic>
 #include <cstdint>
 
 namespace emulator::mos_6502 {
@@ -31,7 +32,7 @@ public:
      */
     static constexpr uint16_t IRQ = 0xFFFE;
 
-    template <typename ClockT> explicit CPU(ClockT clock) : _pulse_gen(clock) {}
+    explicit CPU(std::chrono::nanoseconds clock_period) noexcept;
 
     /**
      * @brief Start the CPU
@@ -47,13 +48,16 @@ public:
      */
     void terminate() noexcept;
 
+    /**
+     * @brief Estimated clock frequency
+     */
     [[nodiscard]] double frequency() const noexcept;
 
 private:
     /**
-     * @brief Block execution until the next high pulse arrives from @link _pulse_gen @endlink
+     * @brief Block execution until the next high pulse arrives from @link _clock @endlink
      */
-    void wait_for_clock() const noexcept;
+    void wait_for_clock() noexcept;
 
     /**
      * @brief Program counter
@@ -134,7 +138,7 @@ private:
      *
      * Execution of the next instruction can only start when the pulse is high.
      */
-    PulseGenerator _pulse_gen;
+    Clock _clock;
 
     /// @brief If @p true, the CPU must stop after completing the current operation
     std::atomic_flag _terminate = false;

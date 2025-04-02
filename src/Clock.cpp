@@ -2,12 +2,14 @@
 // Created by Mikhail Tsaritsyn on Apr 02, 2025.
 //
 
-#include "PeriodicPulse.hpp"
+#include "Clock.hpp"
 
 namespace emulator::mos_6502 {
-PeriodicPulse::PeriodicPulse(const std::chrono::nanoseconds period) noexcept : _period(period) {}
+Clock::Clock(const std::chrono::nanoseconds period) noexcept : _period(period) {}
 
-bool PeriodicPulse::value() noexcept {
+bool Clock::value() noexcept {
+    if (_period.count() == 0) return true;
+
     if (const auto current = std::chrono::high_resolution_clock::now(); current - _last_pulse >= _period) {
         _last_pulse = current;
         return true;
