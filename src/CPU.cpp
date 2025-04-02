@@ -8,11 +8,13 @@
 namespace emulator::mos_6502 {
 
 void CPU::start() noexcept {
-    while (true) {
+    while (!_terminate.test()) {
         wait_for_clock();
-        std::cout << "Tic\n";
+        std::cout << "Tic" << std::endl;
     }
 }
+
+void CPU::terminate() noexcept { _terminate.test_and_set(); }
 
 void CPU::wait_for_clock() const noexcept { while (!_pulse_gen.value()); }
 } // namespace emulator::mos_6502

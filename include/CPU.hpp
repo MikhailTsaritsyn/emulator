@@ -9,7 +9,7 @@
 #include <cstdint>
 
 namespace emulator::mos_6502 {
-
+// TODO: Compute the frequency
 class CPU {
 public:
     /**
@@ -39,7 +39,14 @@ public:
      *
      * It enters an endless loop executing instructions one by one.
      */
-    [[noreturn]] void start() noexcept;
+    void start() noexcept;
+
+    /**
+     * @brief Terminate the execution of the CPU
+     *
+     * It is designed to be called from a thread other than that running the CPU.
+     */
+    void terminate() noexcept;
 
 private:
     /**
@@ -127,6 +134,9 @@ private:
      * Execution of the next instruction can only start when the pulse is high.
      */
     PulseGenerator _pulse_gen;
+
+    /// @brief If @p true, the CPU must stop after completing the current operation
+    std::atomic_flag _terminate = false;
 };
 
 } // namespace emulator::mos_6502
