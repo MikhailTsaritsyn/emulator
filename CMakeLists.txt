@@ -13,15 +13,17 @@ target_sources(emulator_core
 
     FILES
     include/ALU.hpp
-    include/CPU.hpp
     include/Opcode.hpp
-    include/StatusRegister.hpp
     include/PeriodicPulse.hpp
+    include/PulseGenerator.hpp
+    include/StatusRegister.hpp
 
     PRIVATE
     src/ALU.cpp
+    src/PulseGenerator.cpp
     src/Opcode.cpp
     src/PeriodicPulse.cpp
+    src/PulseGenerator.cpp
 )
 
 # Create the main executable
