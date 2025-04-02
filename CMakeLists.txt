@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 3.31)
 project(emulator)
 
 # Create library that will be used by both the executable and tests
-add_library(emulator_core)
+add_library(emulator_core
+
+)
 target_compile_options(emulator_core PRIVATE -Werror)
 target_compile_features(emulator_core PUBLIC cxx_std_23)
 target_sources(emulator_core
@@ -10,10 +12,13 @@ target_sources(emulator_core
     FILE_SET emulator_core_headers
     TYPE HEADERS
     BASE_DIRS include
+
     FILES
     include/ALU.hpp
+    include/CPU.hpp
     include/Opcode.hpp
     include/StatusRegister.hpp
+
     PRIVATE
     src/ALU.cpp
     src/Opcode.cpp
