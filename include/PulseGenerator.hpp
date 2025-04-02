@@ -19,8 +19,6 @@ namespace emulator::mos_6502 {
  *
  * @see https://youtu.be/7MNyAHp0h7A?si=NhIvd8Zh5x1_yoYb
  */
-// TODO: Implement a default "turned off" generator that always gives low value?
-// TODO: Implement a "turned on" generator that always gives high value for maximum possible performance?
 // TODO: Implement a manual generator only activated by some user input?
 class PulseGenerator {
 public:

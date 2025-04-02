@@ -17,6 +17,7 @@ target_sources(emulator_core
     include/Opcode.hpp
     include/PeriodicPulse.hpp
     include/PulseGenerator.hpp
+    include/PulseOn.hpp
     include/StatusRegister.hpp
 
     PRIVATE
