@@ -6,6 +6,10 @@
 #define EMULATOR_MOS_6502_PERIODIC_PULSE_HPP
 #include <chrono>
 
+// TODO(optimization): Pass current time to the value().
+//                     When no CPU operations are performed, call to std::chrono::...::now() consumes most of the time.
+//                     It is done twice: in the CPU loop and in the clock
+
 namespace emulator::mos_6502 {
 /**
  * @brief A device generating short pulses at a predefined rate
