@@ -10,12 +10,18 @@ target_sources(emulator_core
     FILE_SET emulator_core_headers
     TYPE HEADERS
     BASE_DIRS include
+
     FILES
     include/ALU.hpp
+    include/Clock.hpp
+    include/CPU.hpp
     include/Opcode.hpp
     include/StatusRegister.hpp
+
     PRIVATE
     src/ALU.cpp
+    src/Clock.cpp
+    src/CPU.cpp
     src/Opcode.cpp
 )
 
