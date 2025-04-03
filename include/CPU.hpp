@@ -10,7 +10,19 @@
 namespace emulator::mos_6502 {
 class CPU {
 public:
-    explicit CPU(std::chrono::nanoseconds clock_period) noexcept;
+    /**
+     * @brief Alias for the container type that stores memory used by the CPU.
+     */
+    using ROM = std::array<uint8_t, std::numeric_limits<uint16_t>::max()>;
+
+    /**
+     * @brief Reset vector
+     *
+     * At this address in ROM lies the initial value of the PC register.
+     */
+    static constexpr uint16_t RES = 0xFFFC;
+
+    explicit CPU(std::chrono::nanoseconds clock_period, const ROM &rom) noexcept;
 
     /**
      * @brief Start the CPU
@@ -18,6 +30,11 @@ public:
      * It enters an endless loop executing instructions one by one.
      */
     void start() noexcept;
+
+    /**
+     * @brief Reset the CPU to its initial state
+     */
+    void reset() noexcept;
 
     /**
      * @brief Terminate the execution of the CPU
@@ -31,11 +48,54 @@ public:
      */
     [[nodiscard]] double frequency() const noexcept;
 
+    /**
+     * @brief Get a view of the CPU's memory
+     */
+    [[nodiscard]] const ROM &rom() const & noexcept;
+
+    /**
+     * @brief Get a copy of the CPU's memory
+     */
+    [[nodiscard]] ROM rom() const && noexcept;
+
 private:
     /**
-     * @brief Block execution until the next high pulse arrives from @link _clock @endlink
+     * @brief Construct a 16-bit unsigned integer from two 8-bit unsigned integers
+     *
+     * @param high High byte of the result
+     * @param low Low byte of the result
      */
-    void wait_for_clock() noexcept;
+    [[nodiscard]] static uint16_t make_word(uint8_t high, uint8_t low) noexcept;
+
+    /**
+     * @brief Read a byte from a specified address of the memory
+     *
+     * @pre Waits until the next high pulse arrives from @link _clock @endlink.
+     *
+     * @post Increments the cycle count.
+     */
+    uint8_t read(uint16_t address) noexcept;
+
+    /**
+     * @brief Program counter
+     *
+     * The program counter keeps track of the memory location holding the current instruction code.
+     * Its content is automatically stepped up as the program is executed and is modified by branch and jump operations.
+     * As it must be able to address the full 16-bit address range of 64K bytes, it's the only 16-bit register of the
+     * 6502.
+     */
+    uint16_t PC = 0;
+
+    /**
+     * @brief Stack pointer
+     *
+     * The stack pointer points to the current top of stack, or rather, to its bottom, as the stack grows top-down.
+     * The processor stack is located on memory page #1 ($0100–$01FF), 256 bytes Last-In-First-Out (LIFO) stack,
+     * which enables subroutines and also serves as a quick intermediate storage.
+     * As an 8-bit register, the stack pointer holds just the low-byte of this address (the offset from $0100.)
+     * Be aware that this just wraps around in case that the stack underflows.
+     */
+    uint8_t SP = 0;
 
     /**
      * @brief Pulse generator of the CPU.
@@ -43,6 +103,9 @@ private:
      * Execution of the next instruction can only start when the pulse is high.
      */
     Clock _clock;
+
+    /// @brief Memory used by the CPU
+    ROM _rom;
 
     /// @brief If @p true, the CPU must stop after completing the current operation
     std::atomic_flag _terminate = false;

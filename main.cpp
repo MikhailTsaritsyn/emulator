@@ -4,7 +4,9 @@
 #include <thread>
 
 void emulate(const std::chrono::nanoseconds clock_period, const std::chrono::nanoseconds time) {
-    emulator::mos_6502::CPU cpu{ clock_period }; // executes as fast as it can
+    emulator::mos_6502::CPU::ROM rom{};
+    std::ranges::fill(rom, 0);
+    emulator::mos_6502::CPU cpu{ clock_period, rom }; // executes as fast as it can
 
     std::jthread thread{ [&cpu] { cpu.start(); } };
     std::this_thread::sleep_for(time);
