@@ -2,21 +2,24 @@
 // Created by Mikhail Tsaritsyn on Apr 02, 2025.
 //
 #include "CPU.hpp"
-
 #include <chrono>
 
 namespace emulator::mos_6502 {
 
-CPU::CPU(const std::chrono::nanoseconds clock_period) noexcept : _clock(clock_period) {}
+CPU::CPU(const std::chrono::nanoseconds clock_period, const Memory &memory) noexcept
+        : _clock(clock_period),
+          _memory(memory) {}
 
 void CPU::start() noexcept {
+    reset();
+
     auto prev_time = std::chrono::high_resolution_clock::now();
     static constexpr size_t window = 100;
     while (!_terminate.test()) {
-        wait_for_clock();
-        _cycle++;
+        read(PC++);
 
         // Estimate the clock frequency using the last 100 pulses
+        // TODO: Move to a separate function?
         if (_cycle % window == 0) {
             const auto current_time                     = std::chrono::high_resolution_clock::now();
             const std::chrono::duration<double> delta_t = current_time - prev_time;
@@ -36,5 +39,28 @@ void CPU::terminate() noexcept { _terminate.test_and_set(); }
 
 double CPU::frequency() const noexcept { return _frequency; }
 
-void CPU::wait_for_clock() noexcept { while (!_clock.value()); }
+const Memory &CPU::memory() const & noexcept { return _memory; }
+
+Memory &&CPU::memory() && noexcept { return std::move(_memory); }
+
+uint16_t CPU::make_word(const uint8_t high, const uint8_t low) noexcept {
+    return static_cast<uint16_t>(high) << 8 | static_cast<uint16_t>(low);
+}
+
+void CPU::reset() noexcept {
+    read(PC++);
+    read(PC++);
+    read(0x0100 + SP);
+    read(0x0100 + SP - 1);
+    read(0x0100 + SP - 2);
+    const auto pcl = read(RES);
+    const auto pch = read(RES + 1);
+    PC             = make_word(pch, pcl);
+}
+
+uint8_t CPU::read(const uint16_t address) noexcept {
+    while (!_clock.value()) {} // wait for the next clock pulse
+    _cycle++;
+    return _memory[address];
+}
 } // namespace emulator::mos_6502
