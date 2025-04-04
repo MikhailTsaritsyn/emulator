@@ -5,16 +5,12 @@
 #ifndef EMULATOR_MOS_6502_CPU_HPP
 #define EMULATOR_MOS_6502_CPU_HPP
 #include "Clock.hpp"
+#include "Memory.hpp"
 #include <atomic>
 
 namespace emulator::mos_6502 {
 class CPU {
 public:
-    /**
-     * @brief Alias for the container type that stores memory used by the CPU.
-     */
-    using ROM = std::array<uint8_t, std::numeric_limits<uint16_t>::max()>;
-
     /**
      * @brief Reset vector
      *
@@ -22,7 +18,7 @@ public:
      */
     static constexpr uint16_t RES = 0xFFFC;
 
-    explicit CPU(std::chrono::nanoseconds clock_period, const ROM &rom) noexcept;
+    explicit CPU(std::chrono::nanoseconds clock_period, const Memory &memory) noexcept;
 
     /**
      * @brief Start the CPU
@@ -51,12 +47,12 @@ public:
     /**
      * @brief Get a view of the CPU's memory
      */
-    [[nodiscard]] const ROM &rom() const & noexcept;
+    [[nodiscard]] const Memory &memory() const & noexcept;
 
     /**
      * @brief Get a copy of the CPU's memory
      */
-    [[nodiscard]] ROM rom() const && noexcept;
+    [[nodiscard]] Memory &&memory() && noexcept;
 
 private:
     /**
@@ -105,7 +101,7 @@ private:
     Clock _clock;
 
     /// @brief Memory used by the CPU
-    ROM _rom;
+    Memory _memory;
 
     /// @brief If @p true, the CPU must stop after completing the current operation
     std::atomic_flag _terminate = false;

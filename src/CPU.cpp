@@ -2,12 +2,13 @@
 // Created by Mikhail Tsaritsyn on Apr 02, 2025.
 //
 #include "CPU.hpp"
-
 #include <chrono>
 
 namespace emulator::mos_6502 {
 
-CPU::CPU(const std::chrono::nanoseconds clock_period, const ROM &rom) noexcept : _clock(clock_period), _rom(rom) {}
+CPU::CPU(const std::chrono::nanoseconds clock_period, const Memory &memory) noexcept
+        : _clock(clock_period),
+          _memory(memory) {}
 
 void CPU::start() noexcept {
     reset();
@@ -38,9 +39,9 @@ void CPU::terminate() noexcept { _terminate.test_and_set(); }
 
 double CPU::frequency() const noexcept { return _frequency; }
 
-const CPU::ROM &CPU::rom() const & noexcept { return _rom; }
+const Memory &CPU::memory() const & noexcept { return _memory; }
 
-CPU::ROM CPU::rom() const && noexcept { return _rom; }
+Memory &&CPU::memory() && noexcept { return std::move(_memory); }
 
 uint16_t CPU::make_word(const uint8_t high, const uint8_t low) noexcept {
     return static_cast<uint16_t>(high) << 8 | static_cast<uint16_t>(low);
@@ -60,6 +61,6 @@ void CPU::reset() noexcept {
 uint8_t CPU::read(const uint16_t address) noexcept {
     while (!_clock.value()) {} // wait for the next clock pulse
     _cycle++;
-    return _rom[address];
+    return _memory[address];
 }
 } // namespace emulator::mos_6502
