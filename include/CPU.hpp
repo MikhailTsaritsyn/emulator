@@ -6,6 +6,8 @@
 #define EMULATOR_MOS_6502_CPU_HPP
 #include "Clock.hpp"
 #include "Memory.hpp"
+#include "Opcode.hpp"
+#include "StatusRegister.hpp"
 #include <atomic>
 
 namespace emulator::mos_6502 {
@@ -56,6 +58,60 @@ public:
 
 private:
     /**
+     * @brief The argument of the current operation os the accumulator
+     */
+    struct accumulator_t {};
+
+    /**
+     * @brief The current operation has no arguments
+     */
+    struct implicit_t {};
+
+    /**
+     * @brief The argument of the current operation is written right after the opcode
+     */
+    struct immediate_t {};
+
+    /**
+     * @brief The branching offset is written right after the opcode
+     */
+    struct relative_t {};
+
+    /**
+     * @broef Address where to fetch the argument of the current operation
+     */
+    using Address = std::variant<accumulator_t, implicit_t, immediate_t, relative_t, uint16_t>;
+
+    /**
+     * @brief Determine the address of the argument of the current instruction
+     *
+     * @param addressing Addressing mode of the instruction
+     */
+    [[nodiscard]] Address fetch_address(Addressing addressing) noexcept;
+
+    [[nodiscard]] uint16_t fetch_absolute_address() noexcept;
+
+    [[nodiscard]] uint16_t fetch_absolute_address(uint8_t index) noexcept;
+
+    [[nodiscard]] uint16_t fetch_indirect_address() noexcept;
+
+    [[nodiscard]] uint16_t fetch_indexed_indirect_address() noexcept;
+
+    [[nodiscard]] uint16_t fetch_indirect_indexed_address() noexcept;
+
+    [[nodiscard]] uint16_t fetch_zero_page_address() noexcept;
+
+    [[nodiscard]] uint16_t fetch_zero_page_address(uint8_t index) noexcept;
+
+    /**
+     * @brief Execute the current instruction
+     *
+     * @param instruction The instruction to execute
+     * @param address The address where to find the instruction argument
+     */
+    void execute(Instruction instruction, Address address) noexcept;
+
+    /**
      * @brief Construct a 16-bit unsigned integer from two 8-bit unsigned integers
      *
      * @param high High byte of the result
@@ -83,6 +139,47 @@ private:
     uint16_t PC = 0;
 
     /**
+     * @brief Accumulator
+     *
+     * The accumulator is the main register of the 6502.
+     * Its content is typically used by the Arithmetic Logic Unit (ALU) for the first operand,
+     * and results are deposited in the accumulator again.
+     * Thus, its name, as results accumulate in this register.
+     * Most arithmetic and logical operations interact with this register.
+     */
+    uint8_t AC = 0;
+
+    /**
+     * @brief Index register X
+     *
+     * The X and Y registers are auxiliary registers.
+     * Like the accumulator, they can be loaded directly with values,
+     * both immediately, as literal constants, or from memory.
+     * Additionally, they can be incremented and decremented,
+     * and their contents may be transferred to and from the accumulator.
+     * Their main purpose is the use as index registers, where their contents are added to a base memory location,
+     * before any values are either stored to or retrieved from the resulting address,
+     * which is known as the effective address.
+     * This is commonly used for loops and table lookups at a given index, hence the name.
+     */
+    uint8_t X = 0;
+
+    /**
+     * @brief Index register Y
+     *
+     * The X and Y registers are auxiliary registers.
+     * Like the accumulator, they can be loaded directly with values,
+     * both immediately, as literal constants, or from memory.
+     * Additionally, they can be incremented and decremented,
+     * and their contents may be transferred to and from the accumulator.
+     * Their main purpose is the use as index registers, where their contents are added to a base memory location,
+     * before any values are either stored to or retrieved from the resulting address,
+     * which is known as the effective address.
+     * This is commonly used for loops and table lookups at a given index, hence the name.
+     */
+    uint8_t Y = 0;
+
+    /**
      * @brief Stack pointer
      *
      * The stack pointer points to the current top of stack, or rather, to its bottom, as the stack grows top-down.
@@ -92,6 +189,17 @@ private:
      * Be aware that this just wraps around in case that the stack underflows.
      */
     uint8_t SP = 0;
+
+    /**
+     * @brief Status register
+     *
+     * The status register holds the status of the processor, consisting of flags reflecting results of previous
+     * operations, configuration flags, like disabling interrupts or setting up Binary Coded Decimal mode (BCD),
+     * and the carry flag, which enables multibyte arithmetics.
+     *
+     * @note All arithmetic operations update the Z, N, C and V flags.
+     */
+    StatusRegister SR{};
 
     /**
      * @brief Pulse generator of the CPU.
