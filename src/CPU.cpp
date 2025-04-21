@@ -3,6 +3,7 @@
 //
 #include "CPU.hpp"
 
+#include "ALU.hpp"
 #include "helpers.hpp"
 #include <chrono>
 #include <iostream>
@@ -123,25 +124,77 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
     if (!instruction) return false;
 
     const auto addressing = getAddressing(opcode);
-    if (!addressing) halt("A valid opcode must contain both instruction and addressing");
+    if (!addressing) panic("A valid opcode must contain both instruction and addressing");
 
     switch (*instruction) {
     case Instruction::LDA: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
             AC = read(PC++);
         else if (std::holds_alternative<uint16_t>(address)) AC = read(std::get<uint16_t>(address));
-        else halt("Unsupported addressing mode for LDA");
+        else panic("Unsupported addressing mode for LDA");
 
         SR.zero     = AC == 0;
         SR.negative = AC & 0x80;
     } break;
+
     case Instruction::STA: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address)) {
             _clock.wait_for_pulse();
             _memory.write(std::get<uint16_t>(address), AC);
-        } else halt("Unsupported addressing mode for STA");
+        } else panic("Unsupported addressing mode for STA");
     } break;
-    default: halt(std::format("Unhandled instruction {}", to_string(*instruction)));
+
+    case Instruction::ADC: {
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
+            AC = ALU::add(AC, read(PC++), SR);
+        } else if (std::holds_alternative<uint16_t>(address)) {
+            const auto arg = read(std::get<uint16_t>(address));
+            _clock.wait_for_pulse();
+            AC = ALU::add(AC, arg, SR);
+        } else panic("Unsupported addressing mode for ADC");
+    } break;
+
+    case Instruction::SBC: {
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
+            AC = ALU::subtract(AC, read(PC++), SR);
+        } else if (std::holds_alternative<uint16_t>(address)) {
+            const auto arg = read(std::get<uint16_t>(address));
+            _clock.wait_for_pulse();
+            AC = ALU::subtract(AC, arg, SR);
+        } else panic("Unsupported addressing mode for SBC");
+    } break;
+
+    case Instruction::AND: {
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
+            AC = ALU::logical_and(AC, read(PC++), SR);
+        } else if (std::holds_alternative<uint16_t>(address)) {
+            const auto arg = read(std::get<uint16_t>(address));
+            _clock.wait_for_pulse();
+            AC = ALU::logical_and(AC, arg, SR);
+        } else panic("Unsupported addressing mode for AND");
+    } break;
+
+    case Instruction::ORA: {
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
+            AC = ALU::logical_or(AC, read(PC++), SR);
+        } else if (std::holds_alternative<uint16_t>(address)) {
+            const auto arg = read(std::get<uint16_t>(address));
+            _clock.wait_for_pulse();
+            AC = ALU::logical_or(AC, arg, SR);
+        } else panic("Unsupported addressing mode for ORA");
+    } break;
+
+    case Instruction::EOR: {
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
+            AC = ALU::logical_xor(AC, read(PC++), SR);
+        } else if (std::holds_alternative<uint16_t>(address)) {
+            const auto arg = read(std::get<uint16_t>(address));
+            _clock.wait_for_pulse();
+            AC = ALU::logical_xor(AC, arg, SR);
+        } else panic("Unsupported addressing mode for EOR");
+    } break;
+
+    default: panic(std::format("Unhandled instruction {}", to_string(*instruction)));
     }
 
     return true;

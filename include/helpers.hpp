@@ -22,7 +22,7 @@ std::pair<uint8_t, bool> add_with_overflow(uint8_t a, uint8_t b) noexcept;
  *
  * @param message To be displayed before exiting
  */
-[[noreturn]] void halt(std::string_view message);
+[[noreturn]] void panic(std::string_view message);
 
 [[nodiscard]] std::string to_string(Instruction instruction) noexcept;
 } // namespace emulator::mos_6502

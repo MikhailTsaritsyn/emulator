@@ -14,7 +14,7 @@ std::pair<uint8_t, bool> add_with_overflow(const uint8_t a, const uint8_t b) noe
     return { result, overflow };
 }
 
-void halt(const std::string_view message) {
+void panic(const std::string_view message) {
     std::cerr << message << std::endl;
     __builtin_trap();
 }
