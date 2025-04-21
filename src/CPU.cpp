@@ -33,26 +33,21 @@ void CPU::start() noexcept {
         // TODO:
         // execute(*instruction, fetch_address(*addressing));
 
-        // Estimate the clock frequency using the last 100 pulses
-        // TODO: Move to a separate function?
+        // Update the elapsed time every 100 pulses to reduce the overhead
         if (_cycle % window == 0) {
             const auto current_time                     = std::chrono::high_resolution_clock::now();
-            const std::chrono::duration<double> delta_t = current_time - prev_time;
-            _frequency                                  = static_cast<double>(window) / delta_t.count();
+            _elapsed += current_time - prev_time;
             prev_time                                   = current_time;
         }
     }
 
-    // If not enough cycles passed to compute the frequency in the window, use them all
-    if (_cycle < window) {
-        const std::chrono::duration<double> delta_t = std::chrono::high_resolution_clock::now() - prev_time;
-        _frequency                                  = static_cast<double>(_cycle) / delta_t.count();
-    }
+    // Add the remaining cycles after the last window
+    _elapsed += std::chrono::high_resolution_clock::now() - prev_time;
 }
 
 void CPU::terminate() noexcept { _terminate.test_and_set(); }
 
-double CPU::frequency() const noexcept { return _frequency; }
+double CPU::frequency() const noexcept { return static_cast<double>(_cycle) / _elapsed.count(); }
 
 const Memory &CPU::memory() const & noexcept { return _memory; }
 
