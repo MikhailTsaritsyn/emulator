@@ -109,6 +109,10 @@ private:
 
     [[nodiscard]] bool decode_and_execute(uint8_t opcode);
 
+    [[nodiscard]] static uint8_t low_byte(uint16_t word) noexcept;
+
+    [[nodiscard]] static uint8_t high_byte(uint16_t word) noexcept;
+
     /**
      * @brief Construct a 16-bit unsigned integer from two 8-bit unsigned integers
      *
@@ -125,6 +129,8 @@ private:
      * @post Increments the cycle count.
      */
     uint8_t read(uint16_t address) noexcept;
+
+    [[nodiscard]] uint16_t branch(bool condition) noexcept;
 
     /**
      * @brief Program counter

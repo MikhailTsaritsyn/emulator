@@ -14,6 +14,16 @@ std::pair<uint8_t, bool> add_with_overflow(const uint8_t a, const uint8_t b) noe
     return { result, overflow };
 }
 
+std::pair<uint8_t, SignedOverflow> add_with_overflow(uint8_t u, int8_t i) noexcept {
+    const auto result   = static_cast<int16_t>(u) + static_cast<int16_t>(i);
+    const auto overflow = [result] {
+        if (result < 0) return SignedOverflow::Negative;
+        if (result > std::numeric_limits<uint8_t>::max()) return SignedOverflow::Positive;
+        return SignedOverflow::None;
+    }();
+    return { result, overflow };
+}
+
 void panic(const std::string_view message) {
     std::cerr << message << std::endl;
     __builtin_trap();

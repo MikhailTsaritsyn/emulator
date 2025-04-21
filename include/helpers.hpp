@@ -12,6 +12,10 @@
 namespace emulator::mos_6502 {
 std::pair<uint8_t, bool> add_with_overflow(uint8_t a, uint8_t b) noexcept;
 
+enum struct SignedOverflow : uint8_t { None, Positive, Negative };
+
+[[nodiscard]] std::pair<uint8_t, SignedOverflow> add_with_overflow(uint8_t u, int8_t i) noexcept;
+
 /**
  * @brief Erroneously stop the program execution
  *

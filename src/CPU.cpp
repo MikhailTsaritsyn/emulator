@@ -229,11 +229,37 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         SR.overflow = false;
     } break;
 
+    case Instruction::JMP: {
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address))
+            PC = std::get<uint16_t>(address);
+        else panic("Unsupported addressing mode for JMP");
+    } break;
+
+    case Instruction::BMI: PC = branch(SR.negative); break;
+
+    case Instruction::BPL: PC = branch(!SR.negative); break;
+
+    case Instruction::BCC: PC = branch(!SR.carry); break;
+
+    case Instruction::BCS: PC = branch(SR.carry); break;
+
+    case Instruction::BEQ: PC = branch(SR.zero); break;
+
+    case Instruction::BNE: PC = branch(!SR.zero); break;
+
+    case Instruction::BVS: PC = branch(SR.overflow); break;
+
+    case Instruction::BVC: PC = branch(!SR.overflow); break;
+
     default: panic(std::format("Unhandled instruction {}", to_string(*instruction)));
     }
 
     return true;
 }
+
+uint8_t CPU::low_byte(const uint16_t word) noexcept { return static_cast<uint8_t>(word & 0x00ff); }
+
+uint8_t CPU::high_byte(const uint16_t word) noexcept { return static_cast<uint8_t>(word >> 8); }
 
 uint16_t CPU::make_word(const uint8_t high, const uint8_t low) noexcept {
     return static_cast<uint16_t>(high) << 8 | static_cast<uint16_t>(low);
@@ -254,5 +280,26 @@ uint8_t CPU::read(const uint16_t address) noexcept {
     _clock.wait_for_pulse();
     _cycle++;
     return _memory[address];
+}
+
+uint16_t CPU::branch(const bool condition) noexcept {
+    // Assume PC = 0x0101
+    const auto offset = std::bit_cast<int8_t>(read(PC++)); // assume -0x50
+    if (!condition) return PC;
+
+    read(PC);                                                             // from PC = 0x0102, this data is ignored
+    const auto [pcl, overflow] = add_with_overflow(low_byte(PC), offset); // 0xB2
+    auto pch                   = high_byte(PC);                           // 0x01
+
+    switch (overflow) {
+    case SignedOverflow::None: return make_word(pch, pcl);
+    case SignedOverflow::Negative: pch--; break; // 0x00
+    case SignedOverflow::Positive: pch++; break;
+    }
+
+    _clock.wait_for_pulse();
+    return make_word(pch, pcl); // 0x00B2
+
+    // Next operation reads an opcode from 0x00B2
 }
 } // namespace emulator::mos_6502
