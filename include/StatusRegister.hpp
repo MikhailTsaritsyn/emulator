@@ -51,7 +51,7 @@ struct StatusRegister {
     /**
      * The interrupt-inhibit flag blocks any maskable interrupt requests (IRQ).
      */
-    bool interrupt : 1 = false;
+    bool interrupt_disable : 1 = false;
 
     /**
      * The zero flag indicates a value of all zero bits.
