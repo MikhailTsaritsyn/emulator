@@ -194,6 +194,41 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         } else panic("Unsupported addressing mode for EOR");
     } break;
 
+    case Instruction::SEC: {
+        _clock.wait_for_pulse();
+        SR.carry = true;
+    } break;
+
+    case Instruction::CLC: {
+        _clock.wait_for_pulse();
+        SR.carry = false;
+    } break;
+
+    case Instruction::SEI: {
+        _clock.wait_for_pulse();
+        SR.interrupt_disable = true;
+    } break;
+
+    case Instruction::CLI: {
+        _clock.wait_for_pulse();
+        SR.interrupt_disable = false;
+    } break;
+
+    case Instruction::SED: {
+        _clock.wait_for_pulse();
+        SR.decimal = true;
+    } break;
+
+    case Instruction::CLD: {
+        _clock.wait_for_pulse();
+        SR.decimal = false;
+    } break;
+
+    case Instruction::CLV: {
+        _clock.wait_for_pulse();
+        SR.overflow = false;
+    } break;
+
     default: panic(std::format("Unhandled instruction {}", to_string(*instruction)));
     }
 
