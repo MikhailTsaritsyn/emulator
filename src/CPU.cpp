@@ -251,6 +251,35 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
 
     case Instruction::BVC: PC = branch(!SR.overflow); break;
 
+    case Instruction::CMP: {
+        uint8_t memory;
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
+            memory = read(PC++);
+        else if (std::holds_alternative<uint16_t>(address)) memory = read(std::get<uint16_t>(address));
+        else panic("Unsupported addressing mode for CMP");
+
+        SR.negative = static_cast<uint8_t>(static_cast<int>(AC) - static_cast<int>(memory)) & 0x80;
+        if (AC < memory) {
+            SR.carry = false;
+            SR.zero  = false;
+        } else if (AC == memory) {
+            SR.carry = true;
+            SR.zero  = true;
+        } else {
+            SR.carry = true;
+            SR.zero  = false;
+        }
+    } break;
+
+    case Instruction::BIT: {
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address)) {
+            const auto result = static_cast<uint8_t>(AC & read(std::get<uint16_t>(address)));
+            SR.negative       = result & 0x80;
+            SR.overflow       = result & 0x40;
+            SR.zero           = result == 0;
+        } else panic("Unsupported addressing mode for BIT");
+    } break;
+
     default: panic(std::format("Unhandled instruction {}", to_string(*instruction)));
     }
 
