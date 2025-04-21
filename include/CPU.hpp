@@ -10,6 +10,8 @@
 #include "StatusRegister.hpp"
 #include <atomic>
 
+// TODO: wait_for_clock() wrapper?
+
 namespace emulator::mos_6502 {
 class CPU {
 public:
@@ -20,7 +22,7 @@ public:
      */
     static constexpr uint16_t RES = 0xFFFC;
 
-    explicit CPU(std::chrono::nanoseconds clock_period, const Memory &memory) noexcept;
+    explicit CPU(std::chrono::nanoseconds clock_period, Memory memory) noexcept;
 
     /**
      * @brief Start the CPU
@@ -80,6 +82,8 @@ private:
     /**
      * @broef Address where to fetch the argument of the current operation
      */
+    // TODO: specialize reading addresses
+    // TODO: specialize writing addresses
     using Address = std::variant<accumulator_t, implicit_t, immediate_t, relative_t, uint16_t>;
 
     /**
@@ -103,13 +107,7 @@ private:
 
     [[nodiscard]] uint16_t fetch_zero_page_address(uint8_t index) noexcept;
 
-    /**
-     * @brief Execute the current instruction
-     *
-     * @param instruction The instruction to execute
-     * @param address The address where to find the instruction argument
-     */
-    void execute(Instruction instruction, Address address) noexcept;
+    [[nodiscard]] bool decode_and_execute(uint8_t opcode);
 
     /**
      * @brief Construct a 16-bit unsigned integer from two 8-bit unsigned integers

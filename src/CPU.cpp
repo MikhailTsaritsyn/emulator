@@ -5,13 +5,12 @@
 
 #include "helpers.hpp"
 #include <chrono>
-#include <utility>
+#include <iostream>
 
 namespace emulator::mos_6502 {
-
-CPU::CPU(const std::chrono::nanoseconds clock_period, const Memory &memory) noexcept
+CPU::CPU(const std::chrono::nanoseconds clock_period, Memory memory) noexcept
         : _clock(clock_period),
-          _memory(memory) {}
+          _memory(std::move(memory)) {}
 
 void CPU::start() noexcept {
     auto prev_time = std::chrono::high_resolution_clock::now();
@@ -22,17 +21,11 @@ void CPU::start() noexcept {
     while (!_terminate.test()) {
         [[maybe_unused]] const auto opcode = read(PC++);
 
-        // const auto instruction = getInstruction(opcode);
-        // const auto addressing  = getAddressing(opcode);
-        //
-        // if (!instruction || !addressing) {
-        //     std::cerr << std::format("Encountered an illegal opcode {:#02x} at address {:#04x}", opcode, PC - 1)
-        //               << std::endl;
-        //     _terminate.test_and_set();
-        // }
-
-        // TODO:
-        // execute(*instruction, fetch_address(*addressing));
+        if (!decode_and_execute(opcode)) {
+            std::cerr << std::format("Encountered an illegal opcode {:#02x} at address {:#04x}", opcode, PC - 1)
+                      << std::endl;
+            _terminate.test_and_set();
+        }
 
         // Update the elapsed time every 100 pulses to reduce the overhead
         if (_cycle % window == 0) {
@@ -123,6 +116,29 @@ uint16_t CPU::fetch_zero_page_address(const uint8_t index) noexcept {
     const auto adl = read(PC++);
     read(adl); // This data is ignored
     return make_word(0, adl + index);
+}
+
+bool CPU::decode_and_execute(const uint8_t opcode) {
+    const auto instruction = getInstruction(opcode);
+    if (!instruction) return false;
+
+    switch (*instruction) {
+    case Instruction::LDA: {
+        const auto addressing = getAddressing(opcode);
+        if (!addressing) halt("A valid opcode must contain both instruction and addressing");
+
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
+            AC = read(PC++);
+        else if (std::holds_alternative<uint16_t>(address)) AC = read(std::get<uint16_t>(address));
+        else halt("Unsupported addressing mode for LDA");
+
+        SR.zero     = AC == 0;
+        SR.negative = AC & 0x80;
+    } break;
+    default: halt(std::format("Unhandled instruction {}", to_string(*instruction)));
+    }
+
+    return true;
 }
 
 uint16_t CPU::make_word(const uint8_t high, const uint8_t low) noexcept {
