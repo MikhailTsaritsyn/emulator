@@ -258,17 +258,7 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         else if (std::holds_alternative<uint16_t>(address)) memory = read(std::get<uint16_t>(address));
         else panic("Unsupported addressing mode for CMP");
 
-        SR.negative = static_cast<uint8_t>(static_cast<int>(AC) - static_cast<int>(memory)) & 0x80;
-        if (AC < memory) {
-            SR.carry = false;
-            SR.zero  = false;
-        } else if (AC == memory) {
-            SR.carry = true;
-            SR.zero  = true;
-        } else {
-            SR.carry = true;
-            SR.zero  = false;
-        }
+        compare(AC, memory, SR);
     } break;
 
     case Instruction::BIT: {
@@ -278,6 +268,114 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
             SR.overflow       = result & 0x40;
             SR.zero           = result == 0;
         } else panic("Unsupported addressing mode for BIT");
+    } break;
+
+    case Instruction::LDX: {
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
+            X = read(PC++);
+        else if (std::holds_alternative<uint16_t>(address)) X = read(std::get<uint16_t>(address));
+        else panic("Unsupported addressing mode for LDX");
+
+        SR.zero     = X == 0;
+        SR.negative = X & 0x80;
+    } break;
+
+    case Instruction::LDY: {
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
+            Y = read(PC++);
+        else if (std::holds_alternative<uint16_t>(address)) Y = read(std::get<uint16_t>(address));
+        else panic("Unsupported addressing mode for LDY");
+
+        SR.zero     = Y == 0;
+        SR.negative = Y & 0x80;
+    } break;
+
+    case Instruction::STX: {
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address))
+            _memory.write(std::get<uint16_t>(address), X);
+        else panic("Unsupported addressing mode for STX");
+    } break;
+
+    case Instruction::STY: {
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address))
+            _memory.write(std::get<uint16_t>(address), Y);
+        else panic("Unsupported addressing mode for STY");
+    } break;
+
+    case Instruction::INX: {
+        _clock.wait_for_pulse();
+        X++;
+        SR.zero     = X == 0;
+        SR.negative = X & 0x80;
+    } break;
+
+    case Instruction::INY: {
+        _clock.wait_for_pulse();
+        Y++;
+        SR.zero     = Y == 0;
+        SR.negative = Y & 0x80;
+    } break;
+
+    case Instruction::DEX: {
+        _clock.wait_for_pulse();
+        X--;
+        SR.zero     = X == 0;
+        SR.negative = X & 0x80;
+    } break;
+
+    case Instruction::DEY: {
+        _clock.wait_for_pulse();
+        Y--;
+        SR.zero     = Y == 0;
+        SR.negative = Y & 0x80;
+    } break;
+
+    case Instruction::CPX: {
+        uint8_t memory;
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
+            memory = read(PC++);
+        else if (std::holds_alternative<uint16_t>(address)) memory = read(std::get<uint16_t>(address));
+        else panic("Unsupported addressing mode for CPX");
+
+        compare(X, memory, SR);
+    } break;
+
+    case Instruction::CPY: {
+        uint8_t memory;
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
+            memory = read(PC++);
+        else if (std::holds_alternative<uint16_t>(address)) memory = read(std::get<uint16_t>(address));
+        else panic("Unsupported addressing mode for CPY");
+
+        compare(Y, memory, SR);
+    } break;
+
+    case Instruction::TAX: {
+        _clock.wait_for_pulse();
+        X           = AC;
+        SR.zero     = X == 0;
+        SR.negative = X & 0x80;
+    } break;
+
+    case Instruction::TXA: {
+        _clock.wait_for_pulse();
+        AC          = X;
+        SR.zero     = AC == 0;
+        SR.negative = AC & 0x80;
+    } break;
+
+    case Instruction::TAY: {
+        _clock.wait_for_pulse();
+        Y           = AC;
+        SR.zero     = Y == 0;
+        SR.negative = Y & 0x80;
+    } break;
+
+    case Instruction::TYA: {
+        _clock.wait_for_pulse();
+        AC          = Y;
+        SR.zero     = AC == 0;
+        SR.negative = AC & 0x80;
     } break;
 
     default: panic(std::format("Unhandled instruction {}", to_string(*instruction)));
@@ -330,5 +428,11 @@ uint16_t CPU::branch(const bool condition) noexcept {
     return make_word(pch, pcl); // 0x00B2
 
     // Next operation reads an opcode from 0x00B2
+}
+
+void CPU::compare(const uint8_t a, const uint8_t b, StatusRegister &sr) noexcept {
+    sr.negative = static_cast<uint8_t>(static_cast<int>(a) - static_cast<int>(b)) & 0x80;
+    sr.carry = a >= b;
+    sr.zero = a == b;
 }
 } // namespace emulator::mos_6502

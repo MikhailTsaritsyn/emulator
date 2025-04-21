@@ -132,6 +132,8 @@ private:
 
     [[nodiscard]] uint16_t branch(bool condition) noexcept;
 
+    static void compare(uint8_t a, uint8_t b, StatusRegister &sr) noexcept;
+
     /**
      * @brief Program counter
      *
