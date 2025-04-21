@@ -122,11 +122,11 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
     const auto instruction = getInstruction(opcode);
     if (!instruction) return false;
 
+    const auto addressing = getAddressing(opcode);
+    if (!addressing) halt("A valid opcode must contain both instruction and addressing");
+
     switch (*instruction) {
     case Instruction::LDA: {
-        const auto addressing = getAddressing(opcode);
-        if (!addressing) halt("A valid opcode must contain both instruction and addressing");
-
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
             AC = read(PC++);
         else if (std::holds_alternative<uint16_t>(address)) AC = read(std::get<uint16_t>(address));
@@ -134,6 +134,12 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
 
         SR.zero     = AC == 0;
         SR.negative = AC & 0x80;
+    } break;
+    case Instruction::STA: {
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address)) {
+            _clock.wait_for_pulse();
+            _memory.write(std::get<uint16_t>(address), AC);
+        } else halt("Unsupported addressing mode for STA");
     } break;
     default: halt(std::format("Unhandled instruction {}", to_string(*instruction)));
     }
