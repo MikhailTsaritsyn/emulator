@@ -5,7 +5,6 @@
 
 #include "helpers.hpp"
 #include <chrono>
-#include <iostream>
 #include <utility>
 
 namespace emulator::mos_6502 {
@@ -15,21 +14,21 @@ CPU::CPU(const std::chrono::nanoseconds clock_period, const Memory &memory) noex
           _memory(memory) {}
 
 void CPU::start() noexcept {
-    reset();
+    // reset();
 
     auto prev_time = std::chrono::high_resolution_clock::now();
     static constexpr size_t window = 100;
     while (!_terminate.test()) {
-        const auto opcode = read(PC++);
+        [[maybe_unused]] const auto opcode = read(PC++);
 
-        const auto instruction = getInstruction(opcode);
-        const auto addressing  = getAddressing(opcode);
-
-        if (!instruction || !addressing) {
-            std::cerr << std::format("Encountered an illegal opcode {:#02x} at address {:#04x}", opcode, PC - 1)
-                      << std::endl;
-            _terminate.test_and_set();
-        }
+        // const auto instruction = getInstruction(opcode);
+        // const auto addressing  = getAddressing(opcode);
+        //
+        // if (!instruction || !addressing) {
+        //     std::cerr << std::format("Encountered an illegal opcode {:#02x} at address {:#04x}", opcode, PC - 1)
+        //               << std::endl;
+        //     _terminate.test_and_set();
+        // }
 
         // TODO:
         // execute(*instruction, fetch_address(*addressing));
@@ -146,7 +145,7 @@ void CPU::reset() noexcept {
 }
 
 uint8_t CPU::read(const uint16_t address) noexcept {
-    while (!_clock.value()) {} // wait for the next clock pulse
+    _clock.wait_for_pulse();
     _cycle++;
     return _memory[address];
 }
