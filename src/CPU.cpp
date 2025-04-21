@@ -14,9 +14,10 @@ CPU::CPU(const std::chrono::nanoseconds clock_period, const Memory &memory) noex
           _memory(memory) {}
 
 void CPU::start() noexcept {
-    // reset();
-
     auto prev_time = std::chrono::high_resolution_clock::now();
+
+    reset();
+
     static constexpr size_t window = 100;
     while (!_terminate.test()) {
         [[maybe_unused]] const auto opcode = read(PC++);
