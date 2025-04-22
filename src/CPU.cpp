@@ -491,7 +491,7 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         } else panic("Unsupported addressing mode for INC");
     } break;
 
-    // case Instruction::NOP: break;
+    case Instruction::NOP: _clock.wait_for_pulse(); break;
 
     default: panic(std::format("Unhandled instruction {}", to_string(*instruction)));
     }
