@@ -134,6 +134,8 @@ private:
 
     static void compare(uint8_t a, uint8_t b, StatusRegister &sr) noexcept;
 
+    void push(uint8_t byte) noexcept;
+
     /**
      * @brief Program counter
      *

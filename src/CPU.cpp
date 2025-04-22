@@ -378,6 +378,28 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         SR.negative = AC & 0x80;
     } break;
 
+    case Instruction::JSR: {
+        const auto adl = read(PC++);
+        _clock.wait_for_pulse();
+        _clock.wait_for_pulse();
+        push(high_byte(PC));
+        _clock.wait_for_pulse();
+        push(low_byte(PC));
+        const auto adh = read(PC);
+        PC             = make_word(adh, adl);
+    } break;
+
+    case Instruction::RTS: {
+        read(PC++);
+        _clock.wait_for_pulse();
+        SP++;
+        const auto pcl = read(SP++);
+        const auto pch = read(SP);
+        _clock.wait_for_pulse();
+        PC = make_word(pch, pcl);
+        PC++;
+    } break;
+
     default: panic(std::format("Unhandled instruction {}", to_string(*instruction)));
     }
 
@@ -432,7 +454,11 @@ uint16_t CPU::branch(const bool condition) noexcept {
 
 void CPU::compare(const uint8_t a, const uint8_t b, StatusRegister &sr) noexcept {
     sr.negative = static_cast<uint8_t>(static_cast<int>(a) - static_cast<int>(b)) & 0x80;
-    sr.carry = a >= b;
-    sr.zero = a == b;
+    sr.carry    = a >= b;
+    sr.zero     = a == b;
+}
+
+void CPU::push(const uint8_t byte) noexcept {
+    if (!_memory.write(SP--, byte)) panic("Stack is read-only");
 }
 } // namespace emulator::mos_6502
