@@ -20,6 +20,9 @@ void CPU::start() noexcept {
 
     static constexpr size_t window = 100;
     while (!_terminate.test()) {
+        if (_non_maskable_interrupt_requested.test()) interrupt(NMI);
+        if (_interrupt_requested.test() && !SR.interrupt_disable) interrupt(IRQ);
+
         [[maybe_unused]] const auto opcode = read(PC++);
 
         if (!decode_and_execute(opcode)) {
@@ -440,6 +443,16 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         SR = read(0x0100 & SP);
     } break;
 
+    case Instruction::BRK:
+        if (!SR.interrupt_disable) {
+            _clock.wait_for_pulse();
+            push(static_cast<uint8_t>(StatusRegister{ .break_ = true }));
+            interrupt(IRQ);
+        }
+        break;
+
+    case Instruction::RTI: return_from_interrupt(); break;
+
     default: panic(std::format("Unhandled instruction {}", to_string(*instruction)));
     }
 
@@ -502,5 +515,28 @@ void CPU::compare(const uint8_t a, const uint8_t b, StatusRegister &sr) noexcept
 
 void CPU::push(const uint8_t byte) noexcept {
     if (!_memory.write(0x0100 & SP--, byte)) panic("Stack is read-only");
+}
+
+void CPU::interrupt(const uint16_t handler_address) noexcept {
+    read(PC); // this data is discarded
+    _clock.wait_for_pulse();
+    push(high_byte(PC));
+    _clock.wait_for_pulse();
+    push(low_byte(PC));
+    _clock.wait_for_pulse();
+    push(static_cast<uint8_t>(SR));
+    const auto pcl = read(handler_address);
+    const auto pch = read(handler_address + 1);
+    PC             = make_word(pch, pcl);
+}
+
+void CPU::return_from_interrupt() noexcept {
+    read(PC++);
+    _clock.wait_for_pulse();
+    SP++;
+    SR             = read(0x0100 + SP++);
+    const auto pcl = read(0x0100 + SP++);
+    const auto pch = read(0x0100 + SP++);
+    PC             = make_word(pch, pcl);
 }
 } // namespace emulator::mos_6502
