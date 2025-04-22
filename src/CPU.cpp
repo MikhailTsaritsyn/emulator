@@ -393,8 +393,8 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         read(PC++);
         _clock.wait_for_pulse();
         SP++;
-        const auto pcl = read(SP++);
-        const auto pch = read(SP);
+        const auto pcl = read(0x0100 & SP++);
+        const auto pch = read(0x0100 & SP);
         _clock.wait_for_pulse();
         PC = make_word(pch, pcl);
         PC++;
@@ -499,6 +499,6 @@ void CPU::compare(const uint8_t a, const uint8_t b, StatusRegister &sr) noexcept
 }
 
 void CPU::push(const uint8_t byte) noexcept {
-    if (!_memory.write(SP--, byte)) panic("Stack is read-only");
+    if (!_memory.write(0x0100 & SP--, byte)) panic("Stack is read-only");
 }
 } // namespace emulator::mos_6502
