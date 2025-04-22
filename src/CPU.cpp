@@ -455,8 +455,10 @@ uint16_t CPU::make_word(const uint8_t high, const uint8_t low) noexcept {
 }
 
 void CPU::reset() noexcept {
+    SR.interrupt_disable = true;
     read(PC++);
     read(PC++);
+    SP = 0xFF;
     read(0x0100 + SP);
     read(0x0100 + SP - 1);
     read(0x0100 + SP - 2);
