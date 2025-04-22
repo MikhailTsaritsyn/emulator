@@ -461,10 +461,37 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
 
     case Instruction::ROR: shift_or_rotate(*addressing, ALU::rotate_right, Instruction::ROR); break;
 
-        // case Instruction::DEC: break;
-        // case Instruction::INC: break;
+    case Instruction::INC: {
+        if (*addressing == Addressing::AbsoluteX) {
+            const auto address = fetch_absolute_address_long(X);
+            const auto memory  = read(address);
+            _clock.wait_for_pulse();
+            _clock.wait_for_pulse();
+            _memory.write(address, memory + 1);
+        } else if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address)) {
+            const auto memory = read(std::get<uint16_t>(address));
+            _clock.wait_for_pulse();
+            _clock.wait_for_pulse();
+            _memory.write(std::get<uint16_t>(address), memory + 1);
+        } else panic("Unsupported addressing mode for INC");
+    } break;
 
-        // case Instruction::NOP: break;
+    case Instruction::DEC: {
+        if (*addressing == Addressing::AbsoluteX) {
+            const auto address = fetch_absolute_address_long(X);
+            const auto memory  = read(address);
+            _clock.wait_for_pulse();
+            _clock.wait_for_pulse();
+            _memory.write(address, memory - 1);
+        } else if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address)) {
+            const auto memory = read(std::get<uint16_t>(address));
+            _clock.wait_for_pulse();
+            _clock.wait_for_pulse();
+            _memory.write(std::get<uint16_t>(address), memory - 1);
+        } else panic("Unsupported addressing mode for INC");
+    } break;
+
+    // case Instruction::NOP: break;
 
     default: panic(std::format("Unhandled instruction {}", to_string(*instruction)));
     }
@@ -557,16 +584,7 @@ void CPU::shift_or_rotate(const Addressing addressing,
                           uint8_t (*operation)(uint8_t, StatusRegister &),
                           const Instruction instruction) noexcept {
     if (addressing == Addressing::AbsoluteX) {
-        const auto adl           = read(PC++);
-        const auto adh           = read(PC++);
-        const auto [adlx, carry] = add_with_overflow(adl, X);
-
-        // This cycle is wasted because read/modify/write instruction should wait
-        // until the carry has been added to the address high
-        // to avoid writing a false memory location
-        read(make_word(adh, adlx)); // this data is discarded
-
-        const auto address = make_word(adh + carry, adlx);
+        const auto address = fetch_absolute_address_long(X);
         const auto memory  = read(address);
         _clock.wait_for_pulse();
         const auto result = operation(memory, SR);
@@ -582,5 +600,18 @@ void CPU::shift_or_rotate(const Addressing addressing,
         _clock.wait_for_pulse();
         _memory.write(std::get<uint16_t>(address), result);
     } else panic("Unsupported addressing mode for " + to_string(instruction));
+}
+
+uint16_t CPU::fetch_absolute_address_long(const uint8_t index) noexcept {
+    const auto adl           = read(PC++);
+    const auto adh           = read(PC++);
+    const auto [adlx, carry] = add_with_overflow(adl, index);
+
+    // This cycle is wasted because read/modify/write instruction should wait
+    // until the carry has been added to the address high
+    // to avoid writing a false memory location
+    read(make_word(adh, adlx)); // this data is discarded
+
+    return make_word(adh + carry, adlx);
 }
 } // namespace emulator::mos_6502

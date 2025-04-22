@@ -156,6 +156,8 @@ private:
                          uint8_t (*operation)(uint8_t, StatusRegister &),
                          Instruction instruction) noexcept;
 
+    uint16_t fetch_absolute_address_long(uint8_t index) noexcept;
+
     /**
      * @brief Program counter
      *
