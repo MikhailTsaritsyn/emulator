@@ -4,6 +4,8 @@
 
 #ifndef EMULATOR_MOS_6502_STATUS_REGISTER_HPP
 #define EMULATOR_MOS_6502_STATUS_REGISTER_HPP
+#include <bit>
+#include <cstdint>
 
 namespace emulator::mos_6502 {
 struct StatusRegister {
@@ -66,6 +68,13 @@ struct StatusRegister {
      * Any comparison updates this additionally to the Z and N flags, as do shift and rotate operations.
      */
     bool carry : 1 = false;
+
+    [[nodiscard]] constexpr explicit operator uint8_t() noexcept { return *std::bit_cast<uint8_t *>(this); }
+
+    constexpr StatusRegister &operator=(const uint8_t value) noexcept {
+        *std::bit_cast<uint8_t *>(this) = value;
+        return *this;
+    }
 };
 } // namespace emulator::mos_6502
 

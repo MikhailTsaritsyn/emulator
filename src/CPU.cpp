@@ -400,6 +400,46 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         PC++;
     } break;
 
+    case Instruction::PHA: {
+        read(PC); // the data is discarded
+        _clock.wait_for_pulse();
+        push(AC);
+    } break;
+
+    case Instruction::PLA: {
+        read(PC); // the data is discarded
+        _clock.wait_for_pulse();
+        SP++;
+        AC          = read(0x0100 & SP);
+        SR.zero     = AC == 0;
+        SR.negative = AC & 0x80;
+    } break;
+
+    case Instruction::TXS: {
+        _clock.wait_for_pulse();
+        SP = X;
+    } break;
+
+    case Instruction::TSX: {
+        _clock.wait_for_pulse();
+        X           = SP;
+        SR.zero     = X == 0;
+        SR.negative = X & 0x80;
+    } break;
+
+    case Instruction::PHP: {
+        read(PC); // the data is discarded
+        _clock.wait_for_pulse();
+        push(static_cast<uint8_t>(SR));
+    } break;
+
+    case Instruction::PLP: {
+        read(PC); // the data is discarded
+        _clock.wait_for_pulse();
+        SP++;
+        SR = read(0x0100 & SP);
+    } break;
+
     default: panic(std::format("Unhandled instruction {}", to_string(*instruction)));
     }
 
