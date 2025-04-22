@@ -149,6 +149,14 @@ private:
     void return_from_interrupt() noexcept;
 
     /**
+     * Contains a special case for absolute indexed addressing.
+     * It always spends an extra cycle to add carry to the high byte of the address.
+     */
+    void shift_or_rotate(Addressing addressing,
+                         uint8_t (*operation)(uint8_t, StatusRegister &),
+                         Instruction instruction) noexcept;
+
+    /**
      * @brief Program counter
      *
      * The program counter keeps track of the memory location holding the current instruction code.
@@ -156,7 +164,7 @@ private:
      * As it must be able to address the full 16-bit address range of 64K bytes, it's the only 16-bit register of the
      * 6502.
      */
-    uint16_t PC = 0;
+    uint16_t PC;
 
     /**
      * @brief Accumulator

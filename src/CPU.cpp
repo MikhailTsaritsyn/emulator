@@ -453,6 +453,19 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
 
     case Instruction::RTI: return_from_interrupt(); break;
 
+    case Instruction::LSR: shift_or_rotate(*addressing, ALU::shift_right, Instruction::LSR); break;
+
+    case Instruction::ASL: shift_or_rotate(*addressing, ALU::shift_left, Instruction::ASL); break;
+
+    case Instruction::ROL: shift_or_rotate(*addressing, ALU::rotate_left, Instruction::ROL); break;
+
+    case Instruction::ROR: shift_or_rotate(*addressing, ALU::rotate_right, Instruction::ROR); break;
+
+        // case Instruction::DEC: break;
+        // case Instruction::INC: break;
+
+        // case Instruction::NOP: break;
+
     default: panic(std::format("Unhandled instruction {}", to_string(*instruction)));
     }
 
@@ -538,5 +551,36 @@ void CPU::return_from_interrupt() noexcept {
     const auto pcl = read(0x0100 + SP++);
     const auto pch = read(0x0100 + SP++);
     PC             = make_word(pch, pcl);
+}
+
+void CPU::shift_or_rotate(const Addressing addressing,
+                          uint8_t (*operation)(uint8_t, StatusRegister &),
+                          const Instruction instruction) noexcept {
+    if (addressing == Addressing::AbsoluteX) {
+        const auto adl           = read(PC++);
+        const auto adh           = read(PC++);
+        const auto [adlx, carry] = add_with_overflow(adl, X);
+
+        // This cycle is wasted because read/modify/write instruction should wait
+        // until the carry has been added to the address high
+        // to avoid writing a false memory location
+        read(make_word(adh, adlx)); // this data is discarded
+
+        const auto address = make_word(adh + carry, adlx);
+        const auto memory  = read(address);
+        _clock.wait_for_pulse();
+        const auto result = operation(memory, SR);
+        _clock.wait_for_pulse();
+        _memory.write(address, result);
+    } else if (const auto address = fetch_address(addressing); std::holds_alternative<accumulator_t>(address)) {
+        _clock.wait_for_pulse();
+        AC = operation(AC, SR);
+    } else if (std::holds_alternative<uint16_t>(address)) {
+        const auto memory = read(std::get<uint16_t>(address));
+        _clock.wait_for_pulse();
+        const auto result = operation(memory, SR);
+        _clock.wait_for_pulse();
+        _memory.write(std::get<uint16_t>(address), result);
+    } else panic("Unsupported addressing mode for " + to_string(instruction));
 }
 } // namespace emulator::mos_6502
