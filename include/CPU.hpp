@@ -66,6 +66,10 @@ public:
      */
     [[nodiscard]] Memory &&memory() && noexcept;
 
+    [[nodiscard]] uint16_t program_counter() const noexcept;
+
+    [[nodiscard]] size_t cycle() const noexcept;
+
 private:
     /**
      * @brief The argument of the current operation os the accumulator
@@ -116,18 +120,6 @@ private:
     [[nodiscard]] uint16_t fetch_zero_page_address(uint8_t index) noexcept;
 
     [[nodiscard]] bool decode_and_execute(uint8_t opcode);
-
-    [[nodiscard]] static uint8_t low_byte(uint16_t word) noexcept;
-
-    [[nodiscard]] static uint8_t high_byte(uint16_t word) noexcept;
-
-    /**
-     * @brief Construct a 16-bit unsigned integer from two 8-bit unsigned integers
-     *
-     * @param high High byte of the result
-     * @param low Low byte of the result
-     */
-    [[nodiscard]] static uint16_t make_word(uint8_t high, uint8_t low) noexcept;
 
     /**
      * @brief Read a byte from a specified address of the memory

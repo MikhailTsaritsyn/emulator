@@ -91,4 +91,12 @@ std::string to_string(const Instruction instruction) noexcept {
 
     return std::format("{:d}", std::to_underlying(instruction));
 }
+
+uint8_t low_byte(const uint16_t word) noexcept { return static_cast<uint8_t>(word & 0x00ff); }
+
+uint8_t high_byte(const uint16_t word) noexcept { return static_cast<uint8_t>(word >> 8); }
+
+uint16_t make_word(const uint8_t high, const uint8_t low) noexcept {
+    return static_cast<uint16_t>(high) << 8 | static_cast<uint16_t>(low);
+}
 } // namespace emulator::mos_6502

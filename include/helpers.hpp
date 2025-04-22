@@ -29,6 +29,18 @@ enum struct SignedOverflow : uint8_t { None, Positive, Negative };
 [[noreturn]] void panic(std::string_view message);
 
 [[nodiscard]] std::string to_string(Instruction instruction) noexcept;
+
+[[nodiscard]] uint8_t low_byte(uint16_t word) noexcept;
+
+[[nodiscard]] uint8_t high_byte(uint16_t word) noexcept;
+
+/**
+ * @brief Construct a 16-bit unsigned integer from two 8-bit unsigned integers
+ *
+ * @param high High byte of the result
+ * @param low Low byte of the result
+ */
+[[nodiscard]] uint16_t make_word(uint8_t high, uint8_t low) noexcept;
 } // namespace emulator::mos_6502
 
 #endif //EMULATOR_MOS_6502_HELPERS_HPP

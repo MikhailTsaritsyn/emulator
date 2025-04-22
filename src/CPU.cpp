@@ -51,6 +51,10 @@ const Memory &CPU::memory() const & noexcept { return _memory; }
 
 Memory &&CPU::memory() && noexcept { return std::move(_memory); }
 
+uint16_t CPU::program_counter() const noexcept { return PC; }
+
+size_t CPU::cycle() const noexcept { return _cycle; }
+
 CPU::Address CPU::fetch_address(const Addressing addressing) noexcept {
     switch (addressing) {
     case Addressing::Accumulator: return accumulator_t{};
@@ -497,14 +501,6 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
     }
 
     return true;
-}
-
-uint8_t CPU::low_byte(const uint16_t word) noexcept { return static_cast<uint8_t>(word & 0x00ff); }
-
-uint8_t CPU::high_byte(const uint16_t word) noexcept { return static_cast<uint8_t>(word >> 8); }
-
-uint16_t CPU::make_word(const uint8_t high, const uint8_t low) noexcept {
-    return static_cast<uint16_t>(high) << 8 | static_cast<uint16_t>(low);
 }
 
 void CPU::reset() noexcept {
