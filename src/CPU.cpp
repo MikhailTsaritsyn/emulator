@@ -55,6 +55,11 @@ uint16_t CPU::program_counter() const noexcept { return PC; }
 
 size_t CPU::cycle() const noexcept { return _cycle; }
 
+void CPU::wait_for_pulse() noexcept {
+    _clock.wait_for_pulse();
+    _cycle++;
+}
+
 CPU::Address CPU::fetch_address(const Addressing addressing) noexcept {
     switch (addressing) {
     case Addressing::Accumulator: return accumulator_t{};
@@ -146,7 +151,7 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
 
     case Instruction::STA: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address)) {
-            _clock.wait_for_pulse();
+            wait_for_pulse();
             _memory.write(std::get<uint16_t>(address), AC);
         } else panic("Unsupported addressing mode for STA");
     } break;
@@ -156,7 +161,6 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
             AC = ALU::add(AC, read(PC++), SR);
         } else if (std::holds_alternative<uint16_t>(address)) {
             const auto arg = read(std::get<uint16_t>(address));
-            _clock.wait_for_pulse();
             AC = ALU::add(AC, arg, SR);
         } else panic("Unsupported addressing mode for ADC");
     } break;
@@ -166,7 +170,7 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
             AC = ALU::subtract(AC, read(PC++), SR);
         } else if (std::holds_alternative<uint16_t>(address)) {
             const auto arg = read(std::get<uint16_t>(address));
-            _clock.wait_for_pulse();
+            wait_for_pulse();
             AC = ALU::subtract(AC, arg, SR);
         } else panic("Unsupported addressing mode for SBC");
     } break;
@@ -176,7 +180,7 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
             AC = ALU::logical_and(AC, read(PC++), SR);
         } else if (std::holds_alternative<uint16_t>(address)) {
             const auto arg = read(std::get<uint16_t>(address));
-            _clock.wait_for_pulse();
+            wait_for_pulse();
             AC = ALU::logical_and(AC, arg, SR);
         } else panic("Unsupported addressing mode for AND");
     } break;
@@ -186,7 +190,7 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
             AC = ALU::logical_or(AC, read(PC++), SR);
         } else if (std::holds_alternative<uint16_t>(address)) {
             const auto arg = read(std::get<uint16_t>(address));
-            _clock.wait_for_pulse();
+            wait_for_pulse();
             AC = ALU::logical_or(AC, arg, SR);
         } else panic("Unsupported addressing mode for ORA");
     } break;
@@ -196,43 +200,43 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
             AC = ALU::logical_xor(AC, read(PC++), SR);
         } else if (std::holds_alternative<uint16_t>(address)) {
             const auto arg = read(std::get<uint16_t>(address));
-            _clock.wait_for_pulse();
+            wait_for_pulse();
             AC = ALU::logical_xor(AC, arg, SR);
         } else panic("Unsupported addressing mode for EOR");
     } break;
 
     case Instruction::SEC: {
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         SR.carry = true;
     } break;
 
     case Instruction::CLC: {
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         SR.carry = false;
     } break;
 
     case Instruction::SEI: {
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         SR.interrupt_disable = true;
     } break;
 
     case Instruction::CLI: {
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         SR.interrupt_disable = false;
     } break;
 
     case Instruction::SED: {
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         SR.decimal = true;
     } break;
 
     case Instruction::CLD: {
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         SR.decimal = false;
     } break;
 
     case Instruction::CLV: {
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         SR.overflow = false;
     } break;
 
@@ -310,28 +314,28 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
     } break;
 
     case Instruction::INX: {
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         X++;
         SR.zero     = X == 0;
         SR.negative = X & 0x80;
     } break;
 
     case Instruction::INY: {
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         Y++;
         SR.zero     = Y == 0;
         SR.negative = Y & 0x80;
     } break;
 
     case Instruction::DEX: {
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         X--;
         SR.zero     = X == 0;
         SR.negative = X & 0x80;
     } break;
 
     case Instruction::DEY: {
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         Y--;
         SR.zero     = Y == 0;
         SR.negative = Y & 0x80;
@@ -358,28 +362,28 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
     } break;
 
     case Instruction::TAX: {
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         X           = AC;
         SR.zero     = X == 0;
         SR.negative = X & 0x80;
     } break;
 
     case Instruction::TXA: {
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         AC          = X;
         SR.zero     = AC == 0;
         SR.negative = AC & 0x80;
     } break;
 
     case Instruction::TAY: {
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         Y           = AC;
         SR.zero     = Y == 0;
         SR.negative = Y & 0x80;
     } break;
 
     case Instruction::TYA: {
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         AC          = Y;
         SR.zero     = AC == 0;
         SR.negative = AC & 0x80;
@@ -387,10 +391,10 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
 
     case Instruction::JSR: {
         const auto adl = read(PC++);
-        _clock.wait_for_pulse();
-        _clock.wait_for_pulse();
+        wait_for_pulse();
+        wait_for_pulse();
         push(high_byte(PC));
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         push(low_byte(PC));
         const auto adh = read(PC);
         PC             = make_word(adh, adl);
@@ -398,24 +402,24 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
 
     case Instruction::RTS: {
         read(PC++);
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         SP++;
         const auto pcl = read(0x0100 & SP++);
         const auto pch = read(0x0100 & SP);
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         PC = make_word(pch, pcl);
         PC++;
     } break;
 
     case Instruction::PHA: {
         read(PC); // the data is discarded
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         push(AC);
     } break;
 
     case Instruction::PLA: {
         read(PC); // the data is discarded
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         SP++;
         AC          = read(0x0100 & SP);
         SR.zero     = AC == 0;
@@ -423,12 +427,12 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
     } break;
 
     case Instruction::TXS: {
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         SP = X;
     } break;
 
     case Instruction::TSX: {
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         X           = SP;
         SR.zero     = X == 0;
         SR.negative = X & 0x80;
@@ -436,20 +440,20 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
 
     case Instruction::PHP: {
         read(PC); // the data is discarded
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         push(static_cast<uint8_t>(SR));
     } break;
 
     case Instruction::PLP: {
         read(PC); // the data is discarded
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         SP++;
         SR = read(0x0100 & SP);
     } break;
 
     case Instruction::BRK:
         if (!SR.interrupt_disable) {
-            _clock.wait_for_pulse();
+            wait_for_pulse();
             push(static_cast<uint8_t>(StatusRegister{ .break_ = true }));
             interrupt(IRQ);
         }
@@ -469,13 +473,13 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         if (*addressing == Addressing::AbsoluteX) {
             const auto address = fetch_absolute_address_long(X);
             const auto memory  = read(address);
-            _clock.wait_for_pulse();
-            _clock.wait_for_pulse();
+            wait_for_pulse();
+            wait_for_pulse();
             _memory.write(address, memory + 1);
         } else if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address)) {
             const auto memory = read(std::get<uint16_t>(address));
-            _clock.wait_for_pulse();
-            _clock.wait_for_pulse();
+            wait_for_pulse();
+            wait_for_pulse();
             _memory.write(std::get<uint16_t>(address), memory + 1);
         } else panic("Unsupported addressing mode for INC");
     } break;
@@ -484,18 +488,18 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         if (*addressing == Addressing::AbsoluteX) {
             const auto address = fetch_absolute_address_long(X);
             const auto memory  = read(address);
-            _clock.wait_for_pulse();
-            _clock.wait_for_pulse();
+            wait_for_pulse();
+            wait_for_pulse();
             _memory.write(address, memory - 1);
         } else if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address)) {
             const auto memory = read(std::get<uint16_t>(address));
-            _clock.wait_for_pulse();
-            _clock.wait_for_pulse();
+            wait_for_pulse();
+            wait_for_pulse();
             _memory.write(std::get<uint16_t>(address), memory - 1);
         } else panic("Unsupported addressing mode for INC");
     } break;
 
-    case Instruction::NOP: _clock.wait_for_pulse(); break;
+    case Instruction::NOP: wait_for_pulse(); break;
 
     default: panic(std::format("Unhandled instruction {}", to_string(*instruction)));
     }
@@ -517,8 +521,7 @@ void CPU::reset() noexcept {
 }
 
 uint8_t CPU::read(const uint16_t address) noexcept {
-    _clock.wait_for_pulse();
-    _cycle++;
+    wait_for_pulse();
     return _memory[address];
 }
 
@@ -537,7 +540,7 @@ uint16_t CPU::branch(const bool condition) noexcept {
     case SignedOverflow::Positive: pch++; break;
     }
 
-    _clock.wait_for_pulse();
+    wait_for_pulse();
     return make_word(pch, pcl); // 0x00B2
 
     // Next operation reads an opcode from 0x00B2
@@ -555,11 +558,11 @@ void CPU::push(const uint8_t byte) noexcept {
 
 void CPU::interrupt(const uint16_t handler_address) noexcept {
     read(PC); // this data is discarded
-    _clock.wait_for_pulse();
+    wait_for_pulse();
     push(high_byte(PC));
-    _clock.wait_for_pulse();
+    wait_for_pulse();
     push(low_byte(PC));
-    _clock.wait_for_pulse();
+    wait_for_pulse();
     push(static_cast<uint8_t>(SR));
     const auto pcl = read(handler_address);
     const auto pch = read(handler_address + 1);
@@ -568,7 +571,7 @@ void CPU::interrupt(const uint16_t handler_address) noexcept {
 
 void CPU::return_from_interrupt() noexcept {
     read(PC++);
-    _clock.wait_for_pulse();
+    wait_for_pulse();
     SP++;
     SR             = read(0x0100 + SP++);
     const auto pcl = read(0x0100 + SP++);
@@ -582,18 +585,18 @@ void CPU::shift_or_rotate(const Addressing addressing,
     if (addressing == Addressing::AbsoluteX) {
         const auto address = fetch_absolute_address_long(X);
         const auto memory  = read(address);
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         const auto result = operation(memory, SR);
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         _memory.write(address, result);
     } else if (const auto address = fetch_address(addressing); std::holds_alternative<accumulator_t>(address)) {
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         AC = operation(AC, SR);
     } else if (std::holds_alternative<uint16_t>(address)) {
         const auto memory = read(std::get<uint16_t>(address));
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         const auto result = operation(memory, SR);
-        _clock.wait_for_pulse();
+        wait_for_pulse();
         _memory.write(std::get<uint16_t>(address), result);
     } else panic("Unsupported addressing mode for " + to_string(instruction));
 }

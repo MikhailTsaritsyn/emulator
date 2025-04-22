@@ -99,6 +99,11 @@ private:
     using Address = std::variant<accumulator_t, implicit_t, immediate_t, relative_t, uint16_t>;
 
     /**
+     * @brief Wait for the next clock tick and increment the cycle counter
+     */
+    void wait_for_pulse() noexcept;
+
+    /**
      * @brief Determine the address of the argument of the current instruction
      *
      * @param addressing Addressing mode of the instruction
