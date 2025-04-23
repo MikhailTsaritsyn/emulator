@@ -59,6 +59,7 @@ struct Program : public ::testing::Test {
 TEST_F(Program, Empty) {}
 
 /// Example 2.3:
+///
 /// first number at {H1, L1}
 /// second number at {H2, L2}
 /// result written to {H3, L3}
@@ -136,6 +137,7 @@ TEST_F(Program, Add16Bit) {
 }
 
 /// Example 2.12
+///
 /// First number stored at ADDR_FIRST
 /// Second number is stored at ADDR_SECOND
 /// Result is written to ADDR_RESULT
@@ -191,5 +193,83 @@ TEST_F(Program, DecimalAddition) {
     EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT
     EXPECT_EQ(cpu.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
     EXPECT_EQ(cpu.memory()[ADDR_RESULT], 0x93);                   // 79 + 14 = 93
+}
+
+/// Example 2.15:
+///
+/// first number at {H1, L1}
+/// second number at {H2, L2}
+/// result written to {H3, L3}
+///
+/// SEC
+/// LDA L1
+/// SBC L2
+/// STA L3
+/// LDA H1
+/// SBC H2
+/// STA H3
+TEST_F(Program, Subtract16Bit) {
+    constexpr uint8_t L1 = 0x00;
+    constexpr uint8_t H1 = 0x01;
+    constexpr uint8_t L2 = 0x02;
+    constexpr uint8_t H2 = 0x03;
+    constexpr uint8_t L3 = 0x04;
+    constexpr uint8_t H3 = 0x05;
+
+    std::vector<uint8_t> code;
+    size_t code_duration = 0;
+
+    // SEC
+    code.push_back(0x38); // 1 byte, 2 cycles
+    code_duration += 2;
+
+    // LDA L1
+    code.push_back(0xA5); // LDA zero page: 2 bytes, 3 cycles
+    code.push_back(L1);
+    code_duration += 3;
+
+    // SBC L2
+    code.push_back(0xE5); // SBC zero page: 2 bytes, 3 cycles
+    code.push_back(L2);
+    code_duration += 3;
+
+    // STA L3
+    code.push_back(0x85); // STA zero page: 2 bytes, 3 cycles
+    code.push_back(L3);
+    code_duration += 3;
+
+    // LDA H1
+    code.push_back(0xA5); // LDA zero page: 2 bytes, 3 cycles
+    code.push_back(H1);
+    code_duration += 3;
+
+    // SBC H2
+    code.push_back(0xE5); // SBC zero page: 2 bytes, 3 cycles
+    code.push_back(H2);
+    code_duration += 3;
+
+    // STA H3
+    code.push_back(0x85); // STA zero page: 2 bytes, 3 cycles
+    code.push_back(H3);
+    code_duration += 3;
+
+    // insert the code to the memory
+    auto [data, program_end] = assemble(code);
+
+    // initialize the arguments
+    data[L1] = 0x75;
+    data[L2] = 0x93;
+    data[H1] = 0x03;
+    data[H2] = 0x34;
+
+    // execute the program
+    CPU cpu(std::chrono::nanoseconds(0), Memory(data));
+    cpu.start();
+
+    // check the results
+    EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT
+    EXPECT_EQ(cpu.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
+    EXPECT_EQ(cpu.memory()[L3], 0xE2);                            // (0x75 - 0x93) % 0x100
+    EXPECT_EQ(cpu.memory()[H3], 0xCE);                            // (0x03 - 0x34 - carry) % 0x100
 }
 } // namespace emulator::mos_6502::test
