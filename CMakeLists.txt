@@ -15,6 +15,7 @@ target_sources(emulator_core
     include/ALU.hpp
     include/Clock.hpp
     include/CPU.hpp
+    include/helpers.hpp
     include/Memory.hpp
     include/Opcode.hpp
     include/StatusRegister.hpp
@@ -23,6 +24,7 @@ target_sources(emulator_core
     src/ALU.cpp
     src/Clock.cpp
     src/CPU.cpp
+    src/helpers.cpp
     src/Memory.cpp
     src/Opcode.cpp
 )
@@ -45,6 +47,7 @@ add_executable(emulator_test
     tests/binary_arithmetic.cpp
     tests/decimal_arithmetic.cpp
     tests/logical_operations.cpp
+    tests/programs.cpp
 )
 target_link_libraries(emulator_test PRIVATE emulator_core gtest gtest_main)
 

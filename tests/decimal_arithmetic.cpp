@@ -20,7 +20,7 @@ struct DecimalArithmetic : testing::TestWithParam<TestParameters> {
                 << static_cast<int>(input_first) << " -> " << static_cast<int>(output);
         EXPECT_FALSE(sr.break_);
         EXPECT_TRUE(sr.decimal);
-        EXPECT_FALSE(sr.interrupt);
+        EXPECT_FALSE(sr.interrupt_disable);
         EXPECT_EQ(sr.zero, output == 0);
     }
 };
@@ -36,7 +36,7 @@ struct DecimalAddition : DecimalArithmetic {
                .overflow  = false,
                .break_    = false,
                .decimal   = true,
-               .interrupt = false,
+               .interrupt_disable = false,
                .zero      = false,
                .carry     = input_carry };
     }
@@ -93,7 +93,7 @@ struct DecimalSubtraction : DecimalArithmetic {
                .overflow  = false,
                .break_    = false,
                .decimal   = true,
-               .interrupt = false,
+               .interrupt_disable = false,
                .zero      = false,
                .carry     = !input_borrow };
     }

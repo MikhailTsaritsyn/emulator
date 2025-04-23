@@ -21,7 +21,7 @@ struct LogicalOperations : testing::TestWithParam<TestParameters> {
                .overflow  = false,
                .break_    = false,
                .decimal   = false,
-               .interrupt = false,
+               .interrupt_disable = false,
                .zero      = false,
                .carry     = false };
     }
@@ -31,7 +31,7 @@ struct LogicalOperations : testing::TestWithParam<TestParameters> {
         EXPECT_FALSE(sr.overflow);
         EXPECT_FALSE(sr.break_);
         EXPECT_FALSE(sr.decimal);
-        EXPECT_FALSE(sr.interrupt);
+        EXPECT_FALSE(sr.interrupt_disable);
         EXPECT_EQ(sr.zero, output == 0) << "output = " << static_cast<int>(output);
         EXPECT_FALSE(sr.carry);
     }

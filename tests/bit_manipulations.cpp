@@ -21,7 +21,7 @@ struct BitManip : testing::TestWithParam<TestParameters> {
                .overflow  = false,
                .break_    = false,
                .decimal   = false,
-               .interrupt = false,
+               .interrupt_disable = false,
                .zero      = false,
                .carry     = input_carry };
     }
@@ -31,7 +31,7 @@ struct BitManip : testing::TestWithParam<TestParameters> {
         EXPECT_FALSE(sr.overflow);
         EXPECT_FALSE(sr.break_);
         EXPECT_FALSE(sr.decimal);
-        EXPECT_FALSE(sr.interrupt);
+        EXPECT_FALSE(sr.interrupt_disable);
         EXPECT_EQ(sr.zero, output == 0);
     }
 };

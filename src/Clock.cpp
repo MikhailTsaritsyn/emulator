@@ -4,17 +4,16 @@
 
 #include "Clock.hpp"
 
+#include <thread>
+
 namespace emulator::mos_6502 {
 Clock::Clock(const std::chrono::nanoseconds period) noexcept : _period(period) {}
 
-bool Clock::value() noexcept {
-    if (_period.count() == 0) return true;
+void Clock::wait_for_pulse() noexcept {
+    if (_period.count() == 0) return;
 
-    if (const auto current = std::chrono::high_resolution_clock::now(); current - _last_pulse >= _period) {
-        _last_pulse = current;
-        return true;
-    }
-
-    return false;
+    const auto elapsed = std::chrono::high_resolution_clock::now() - _last_pulse;
+    std::this_thread::sleep_for(_period - elapsed);
+    _last_pulse = std::chrono::high_resolution_clock::now();
 }
 } // namespace emulator::mos_6502
