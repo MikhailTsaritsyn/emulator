@@ -423,4 +423,50 @@ TEST_F(Program, Or) {
     EXPECT_EQ(cpu.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
     EXPECT_EQ(cpu.memory()[ADDR_RESULT], 0b11101111);             // 0b11100111 | 0b00001000 = 0b11101111
 }
+
+/**
+ * @brief Example 2.21: complementing a byte with EOR
+ *
+ * The argument and the mask are given as immediate values.
+ * The result is written to @p ADDR_RESULT.
+ *
+ * @code
+ * LDA #10101111
+ * EOR #11111111
+ * STA ADDR_RESULT
+ * @endcode
+ */
+TEST_F(Program, Xor) {
+    constexpr uint8_t ADDR_RESULT = 0x00;
+
+    std::vector<uint8_t> code;
+    size_t code_duration = 0;
+
+    // LDA #10101111
+    code.push_back(0xA9); // LDA immediate: 2 bytes, 2 cycles
+    code.push_back(0b10101111);
+    code_duration += 2;
+
+    // EOR #11111111
+    code.push_back(0x49); // EOR immediate: 2 bytes, 2 cycles
+    code.push_back(0b11111111);
+    code_duration += 2;
+
+    // STA ADDR_RESULT
+    code.push_back(0x85); // STA zero page: 2 bytes, 3 cycles
+    code.push_back(ADDR_RESULT);
+    code_duration += 3;
+
+    // insert the code to the memory
+    auto [data, program_end] = assemble(code);
+
+    // execute the program
+    CPU cpu(std::chrono::nanoseconds(0), Memory(data));
+    cpu.start();
+
+    // check the results
+    EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT
+    EXPECT_EQ(cpu.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
+    EXPECT_EQ(cpu.memory()[ADDR_RESULT], 0b01010000);             // 0b10101111 ^ 0b11111111 = 0b01010000
+}
 } // namespace emulator::mos_6502::test
