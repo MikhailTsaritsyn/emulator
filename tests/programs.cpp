@@ -272,4 +272,63 @@ TEST_F(Program, Subtract16Bit) {
     EXPECT_EQ(cpu.memory()[L3], 0xE2);                            // (0x75 - 0x93) % 0x100
     EXPECT_EQ(cpu.memory()[H3], 0xCE);                            // (0x03 - 0x34 - carry) % 0x100
 }
+
+/// Example 2.18
+///
+/// First number stored at ADDR_FIRST
+/// Second number is stored at ADDR_SECOND
+/// Result is written to ADDR_RESULT
+///
+/// SED
+/// SEC
+/// LDA ADDR_FIRST
+/// SBC ADDR_SECOND
+/// STA ADDR_RESULT
+TEST_F(Program, DecimalSubtract) {
+    constexpr uint8_t ADDR_FIRST  = 0x00;
+    constexpr uint8_t ADDR_SECOND = 0x01;
+    constexpr uint8_t ADDR_RESULT = 0x02;
+
+    std::vector<uint8_t> code;
+    size_t code_duration = 0;
+
+    // SED
+    code.push_back(0xF8); // 1 byte, 2 cycles
+    code_duration += 2;
+
+    // SEC
+    code.push_back(0x38); // 1 byte, 2 cycles
+    code_duration += 2;
+
+    // LDA ADDR_FIRST
+    code.push_back(0xA5); // LDA zero page: 2 bytes, 3 cycles
+    code.push_back(ADDR_FIRST);
+    code_duration += 3;
+
+    // SBC ADDR_SECOND
+    code.push_back(0xE5); // SBC zero page: 2 bytes, 3 cycles
+    code.push_back(ADDR_SECOND);
+    code_duration += 3;
+
+    // STA ADDR_RESULT
+    code.push_back(0x85); // STA zero page: 2 bytes, 3 cycles
+    code.push_back(ADDR_RESULT);
+    code_duration += 3;
+
+    // insert the code to the memory
+    auto [data, program_end] = assemble(code);
+
+    // initialize the arguments
+    data[ADDR_FIRST]  = 0x44;
+    data[ADDR_SECOND] = 0x29;
+
+    // execute the program
+    CPU cpu(std::chrono::nanoseconds(0), Memory(data));
+    cpu.start();
+
+    // check the results
+    EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT
+    EXPECT_EQ(cpu.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
+    EXPECT_EQ(cpu.memory()[ADDR_RESULT], 0x15);                   // 44 - 29 = 15
+}
 } // namespace emulator::mos_6502::test
