@@ -331,4 +331,50 @@ TEST_F(Program, DecimalSubtract) {
     EXPECT_EQ(cpu.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
     EXPECT_EQ(cpu.memory()[ADDR_RESULT], 0x15);                   // 44 - 29 = 15
 }
+
+/**
+ * @brief Example 2.19: clearing a bit with AND
+ *
+ * The argument and the mask are given as immediate values.
+ * The result is written to @p ADDR_RESULT.
+ *
+ * @code
+ * LDA #1100X111; X is 0 or 1
+ * AND #11110111
+ * STA ADDR_RESULT
+ * @endcode
+ */
+TEST_F(Program, And) {
+    constexpr uint8_t ADDR_RESULT = 0x00;
+
+    std::vector<uint8_t> code;
+    size_t code_duration = 0;
+
+    // LDA #1100X111; X is 0 or 1
+    code.push_back(0xA9); // LDA immediate: 2 bytes, 2 cycles
+    code.push_back(0b11001111);
+    code_duration += 2;
+
+    // AND #11110111
+    code.push_back(0x29); // AND immediate: 2 bytes, 2 cycles
+    code.push_back(0b11110111);
+    code_duration += 2;
+
+    // STA ADDR_RESULT
+    code.push_back(0x85); // STA zero page: 2 bytes, 3 cycles
+    code.push_back(ADDR_RESULT);
+    code_duration += 3;
+
+    // insert the code to the memory
+    auto [data, program_end] = assemble(code);
+
+    // execute the program
+    CPU cpu(std::chrono::nanoseconds(0), Memory(data));
+    cpu.start();
+
+    // check the results
+    EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT
+    EXPECT_EQ(cpu.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
+    EXPECT_EQ(cpu.memory()[ADDR_RESULT], 0b11000111);             // 0b11001111 & 0b111101111 = 0b11000111
+}
 } // namespace emulator::mos_6502::test
