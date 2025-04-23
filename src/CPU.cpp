@@ -179,7 +179,6 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
             AC = ALU::logical_and(AC, read(PC++), SR);
         } else if (std::holds_alternative<uint16_t>(address)) {
             const auto arg = read(std::get<uint16_t>(address));
-            wait_for_pulse();
             AC = ALU::logical_and(AC, arg, SR);
         } else panic("Unsupported addressing mode for AND");
     } break;
@@ -189,7 +188,6 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
             AC = ALU::logical_or(AC, read(PC++), SR);
         } else if (std::holds_alternative<uint16_t>(address)) {
             const auto arg = read(std::get<uint16_t>(address));
-            wait_for_pulse();
             AC = ALU::logical_or(AC, arg, SR);
         } else panic("Unsupported addressing mode for ORA");
     } break;
@@ -199,7 +197,6 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
             AC = ALU::logical_xor(AC, read(PC++), SR);
         } else if (std::holds_alternative<uint16_t>(address)) {
             const auto arg = read(std::get<uint16_t>(address));
-            wait_for_pulse();
             AC = ALU::logical_xor(AC, arg, SR);
         } else panic("Unsupported addressing mode for EOR");
     } break;
