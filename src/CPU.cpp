@@ -170,7 +170,6 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
             AC = ALU::subtract(AC, read(PC++), SR);
         } else if (std::holds_alternative<uint16_t>(address)) {
             const auto arg = read(std::get<uint16_t>(address));
-            wait_for_pulse();
             AC = ALU::subtract(AC, arg, SR);
         } else panic("Unsupported addressing mode for SBC");
     } break;
