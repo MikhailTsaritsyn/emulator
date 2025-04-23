@@ -1,6 +1,12 @@
 //
 // Created by Mikhail Tsaritsyn on Apr 22, 2025.
 //
+
+/******************************************************************************************************************
+ * Code snippets are taken from
+ * https://web.archive.org/web/20221112220344if_/http://archive.6502.org/datasheets/synertek_programming_manual.pdf
+ ******************************************************************************************************************/
+
 #include "CPU.hpp"
 #include "helpers.hpp"
 #include <gtest/gtest.h>
@@ -52,19 +58,18 @@ struct Program : public ::testing::Test {
 
 TEST_F(Program, Empty) {}
 
-// https://web.archive.org/web/20221112220344if_/http://archive.6502.org/datasheets/synertek_programming_manual.pdf
-// Example 2.3:
-// first number at {H1, L1}
-// second number at {H2, L2}
-// result written to {H3, L3}
-//
-// LDA L1
-// CLC
-// ADC L2
-// STA L3
-// LDA H1
-// ADC H2
-// STA H3
+/// Example 2.3:
+/// first number at {H1, L1}
+/// second number at {H2, L2}
+/// result written to {H3, L3}
+///
+/// LDA L1
+/// CLC
+/// ADC L2
+/// STA L3
+/// LDA H1
+/// ADC H2
+/// STA H3
 TEST_F(Program, Add16Bit) {
     constexpr uint8_t L1 = 0x00;
     constexpr uint8_t H1 = 0x01;
@@ -128,5 +133,63 @@ TEST_F(Program, Add16Bit) {
     EXPECT_EQ(cpu.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
     EXPECT_EQ(cpu.memory()[L3], 0x08);                            // (data[L1] + data[L2]) % 0x100
     EXPECT_EQ(cpu.memory()[H3], 0x38);                            // data[H1] + data[H2] + carry
+}
+
+/// Example 2.12
+/// First number stored at ADDR_FIRST
+/// Second number is stored at ADDR_SECOND
+/// Result is written to ADDR_RESULT
+///
+/// CLC
+/// SED
+/// LDA ADDR_FIRST
+/// ADC ADDR_SECOND
+/// STA ADDR_RESULT
+TEST_F(Program, DecimalAddition) {
+    constexpr uint8_t ADDR_FIRST  = 0x00;
+    constexpr uint8_t ADDR_SECOND = 0x01;
+    constexpr uint8_t ADDR_RESULT = 0x02;
+
+    std::vector<uint8_t> code;
+    size_t code_duration = 0;
+
+    // CLC
+    code.push_back(0x18); // 1 byte, 2 cycles
+    code_duration += 2;
+
+    // SED
+    code.push_back(0xF8); // 1 byte, 2 cycles
+    code_duration += 2;
+
+    // LDA zero page
+    code.push_back(0xA5); // 2 bytes, 3 cycles
+    code.push_back(ADDR_FIRST);
+    code_duration += 3;
+
+    // ADC zero page
+    code.push_back(0x65); // 2 bytes, 3 cycles
+    code.push_back(ADDR_SECOND);
+    code_duration += 3;
+
+    // STA zero page
+    code.push_back(0x85); // 2 bytes, 3 cycles
+    code.push_back(ADDR_RESULT);
+    code_duration += 3;
+
+    // insert the code to the memory
+    auto [data, program_end] = assemble(code);
+
+    // initialize the arguments
+    data[ADDR_FIRST]  = 0x79;
+    data[ADDR_SECOND] = 0x14;
+
+    // execute the program
+    CPU cpu(std::chrono::nanoseconds(0), Memory(data));
+    cpu.start();
+
+    // check the results
+    EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT
+    EXPECT_EQ(cpu.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
+    EXPECT_EQ(cpu.memory()[ADDR_RESULT], 0x93);                   // 79 + 14 = 93
 }
 } // namespace emulator::mos_6502::test
