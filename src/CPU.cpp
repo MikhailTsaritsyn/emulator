@@ -26,7 +26,7 @@ void CPU::start() noexcept {
         [[maybe_unused]] const auto opcode = read(PC++);
 
         if (!decode_and_execute(opcode)) {
-            std::cerr << std::format("Encountered an illegal opcode {:#02x} at address {:#04x}", opcode, PC - 1)
+            std::cerr << std::format("Encountered an illegal opcode {:#04x} at address {:#06x}", opcode, PC - 1)
                       << std::endl;
             _terminate.test_and_set();
         }
