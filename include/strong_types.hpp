@@ -120,7 +120,6 @@ public:
         else return std::nullopt;
     }
 
-    // TODO: use for any types
     /**
      * @copydoc narrow
      *
@@ -139,6 +138,60 @@ public:
             throw std::overflow_error("Cannot cast strong integer: overflow");
 
         return StrongInt<U>(static_cast<U>(_value));
+    }
+
+    /**
+     * @brief Overloads for the cases when the safe cast is possible
+     */
+    template <std::integral U>
+        requires Contains<U, T>
+    [[nodiscard]] constexpr StrongInt<U> unsafe_cast() const noexcept {
+        return StrongInt<U>(*this);
+    }
+
+    /**
+     * @brief Overload for the same type
+     */
+    template <std::integral U>
+        requires(std::is_same_v<U, T>)
+    [[nodiscard]] constexpr StrongInt<U> unsafe_cast() const noexcept {
+        return *this;
+    }
+
+    /**
+     * @brief Non-narrowing conversions.
+     *
+     * Such casts are:
+     * - a signed to a non-narrower unsigned
+     * - an unsigned to a non-wider signed
+     *
+     * Examples:
+     * - int16_t to uint16_t
+     * - int16_t to uint32_t
+     * - uint16_t to int8_t
+     * - uint16_t to int16_t
+     *
+     * @throw std::underflow_error If the value is too small for the resulting type
+     * @throw std::overflow_error If the value is too big for the resulting type
+     */
+    template <std::integral U>
+        requires(!Contains<U, T> && !Contains<T, U> && !std::is_same_v<T, U>)
+    constexpr StrongInt<U> unsafe_cast() const noexcept(false) {
+        if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U>) {
+            static_assert(sizeof(T) <= sizeof(U), "another overload must have been chosen");
+
+            if (_value < 0) throw std::underflow_error("Cannot cast strong integer: underflow");
+
+            return StrongInt<U>(static_cast<U>(_value));
+        } else {
+            static_assert(std::is_unsigned_v<T> && std::is_signed_v<U>, "another overload must have been chosen");
+            static_assert(sizeof(T) >= sizeof(U), "another overload must have been chosen");
+
+            if (_value > static_cast<T>(std::numeric_limits<U>::max()))
+                throw std::overflow_error("Cannot cast strong integer: overflow");
+
+            return StrongInt<U>(static_cast<U>(_value));
+        }
     }
 
 private:

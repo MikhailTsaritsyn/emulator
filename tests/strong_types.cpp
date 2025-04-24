@@ -28,14 +28,43 @@ TEST(StrongInt, NarrowingCasts) {
     EXPECT_EQ(u16(100).narrow<uint8_t>()->to_underlying(), 100);
     EXPECT_EQ(i16(100).narrow<uint8_t>()->to_underlying(), 100);
     EXPECT_EQ(i16(100).narrow<int8_t>()->to_underlying(), 100);
+}
 
+TEST(StrongInt, UnsafeCastNarrowing) {
     EXPECT_THROW((void)u16(1000).unsafe_cast<uint8_t>(), std::overflow_error);
-    EXPECT_THROW((void)i16(1000).unsafe_cast<uint8_t>(), std::overflow_error);
-    EXPECT_THROW((void)i16(1000).unsafe_cast<int8_t>(), std::overflow_error);
-    EXPECT_THROW((void)i16(-1000).unsafe_cast<uint8_t>(), std::underflow_error);
-    EXPECT_THROW((void)i16(-1000).unsafe_cast<int8_t>(), std::underflow_error);
     EXPECT_EQ(u16(100).unsafe_cast<uint8_t>().to_underlying(), 100);
+
+    EXPECT_THROW((void)i16(1000).unsafe_cast<uint8_t>(), std::overflow_error);
+    EXPECT_THROW((void)i16(-100).unsafe_cast<uint8_t>(), std::underflow_error);
     EXPECT_EQ(i16(100).unsafe_cast<uint8_t>().to_underlying(), 100);
+
+    EXPECT_THROW((void)i16(1000).unsafe_cast<int8_t>(), std::overflow_error);
+    EXPECT_THROW((void)i16(-1000).unsafe_cast<int8_t>(), std::underflow_error);
     EXPECT_EQ(i16(100).unsafe_cast<int8_t>().to_underlying(), 100);
+    EXPECT_EQ(i16(-100).unsafe_cast<int8_t>().to_underlying(), -100);
+}
+
+TEST(StrongInt, UnsafeCastTrivial) {
+    EXPECT_EQ(u16(100).unsafe_cast<uint16_t>().to_underlying(), 100);
+    EXPECT_EQ(u16(100).unsafe_cast<uint32_t>().to_underlying(), 100);
+
+    EXPECT_EQ(u16(100).unsafe_cast<int32_t>().to_underlying(), 100);
+
+    EXPECT_EQ(i16(100).unsafe_cast<int16_t>().to_underlying(), 100);
+    EXPECT_EQ(i16(100).unsafe_cast<int32_t>().to_underlying(), 100);
+}
+
+TEST(StrongInt, UnsafeCastOther) {
+    EXPECT_THROW((void)u16(1000).unsafe_cast<int8_t>(), std::overflow_error);
+    EXPECT_EQ(u16(100).unsafe_cast<int8_t>().to_underlying(), 100);
+
+    EXPECT_THROW((void)u16(0x9000).unsafe_cast<int8_t>(), std::overflow_error);
+    EXPECT_EQ(u16(100).unsafe_cast<int16_t>().to_underlying(), 100);
+
+    EXPECT_THROW((void)i16(-100).unsafe_cast<uint16_t>(), std::underflow_error);
+    EXPECT_EQ(i16(100).unsafe_cast<uint16_t>().to_underlying(), 100);
+
+    EXPECT_THROW((void)i16(-100).unsafe_cast<uint32_t>(), std::underflow_error);
+    EXPECT_EQ(i16(100).unsafe_cast<uint32_t>().to_underlying(), 100);
 }
 } // namespace mtl::test
