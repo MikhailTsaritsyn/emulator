@@ -19,6 +19,7 @@ target_sources(emulator_core
     include/Memory.hpp
     include/Opcode.hpp
     include/StatusRegister.hpp
+    include/strong_types.hpp
 
     PRIVATE
     src/ALU.cpp
@@ -48,6 +49,7 @@ add_executable(emulator_test
     tests/decimal_arithmetic.cpp
     tests/logical_operations.cpp
     tests/programs.cpp
+    tests/strong_types.cpp
 )
 target_link_libraries(emulator_test PRIVATE emulator_core gtest gtest_main)
 
