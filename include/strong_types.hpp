@@ -82,20 +82,23 @@ public:
      * - @p uint16_t to @p uint8_t
      * - @p int16_t to @p uint8_t
      * - @p int16_t to @p int8_t
+     *
+     * @note It is only defined for platforms implementing two's complement
      */
-    // TODO: optimize
     template <std::integral U>
-        requires Contains<T, U>
+        requires Contains<T, U> && (std::bit_cast<uint8_t>(int8_t{ -1 }) == uint8_t{ 0xff })
     [[nodiscard]] constexpr StrongInt<U> wrap() const noexcept {
         if constexpr (std::is_unsigned_v<T> && std::is_unsigned_v<U>) {
             return StrongInt<U>(static_cast<U>(_value));
-        } else { // narrowing casts for signed integers are undefined, have to reimplement it
-            T value       = _value;
-            const T range = static_cast<T>(std::numeric_limits<U>::max())
-                            - static_cast<T>(std::numeric_limits<U>::min()) + T{ 1 };
-            while (value < std::numeric_limits<U>::min()) value += range;
-            while (value > std::numeric_limits<U>::max()) value -= range;
-            return StrongInt<U>(static_cast<U>(value));
+        }
+        // narrowing casts for signed integers are undefined, have to reimplement it
+        // by discarding the most significant bits of the wider type so it fits into the narrower type
+        else if constexpr (std::is_unsigned_v<U>) {
+            const auto mask = static_cast<T>(std::numeric_limits<U>::max()); // mask filled with ones for the size of U
+            return StrongInt<U>(static_cast<U>(_value & mask));
+        } else {
+            const auto mask = static_cast<T>(U{ -1 }); // mask filled with ones for the size of U
+            return StrongInt<U>(static_cast<U>(_value & mask));
         }
     }
 
