@@ -67,4 +67,13 @@ TEST(StrongInt, UnsafeCastOther) {
     EXPECT_THROW((void)i16(-100).unsafe_cast<uint32_t>(), std::underflow_error);
     EXPECT_EQ(i16(100).unsafe_cast<uint32_t>().to_underlying(), 100);
 }
+
+TEST(StrongInt, Print) {
+    std::stringstream ss;
+    ss << i16(100);
+    EXPECT_EQ(ss.str(), "100");
+
+    EXPECT_EQ(std::format("{}", i16(100)), "100");
+    EXPECT_EQ(std::format("{:#04x}", u16(100)), "0x64");
+}
 } // namespace mtl::test

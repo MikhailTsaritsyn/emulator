@@ -195,8 +195,12 @@ public:
     }
 
 private:
-    // TODO: Implement formatter for std::format
-    // TODO: stream operator
+    friend std::ostream &operator<<(std::ostream &os, const StrongInt sting) noexcept {
+        if constexpr (sizeof(T) == 1) // avoid printing as characters
+            return os << static_cast<int>(sting.to_underlying());
+        return os << sting._value;
+    }
+
     // TODO: all operators from https://en.cppreference.com/w/cpp/language/operator_incdec
 
     T _value = 0;
@@ -243,5 +247,11 @@ using i32 = StrongInt<int32_t>;
 using i64 = StrongInt<int64_t>;
 
 } // namespace mtl
+
+template <std::integral T> struct std::formatter<mtl::StrongInt<T>> : std::formatter<T> {
+    constexpr auto format(const mtl::StrongInt<T> sting, std::format_context &ctx) const noexcept {
+        return std::formatter<T>::format(sting.to_underlying(), ctx);
+    }
+};
 
 #endif //EMULATOR_STRONG_TYPES_HPP
