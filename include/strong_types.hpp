@@ -66,8 +66,6 @@ public:
         return StrongInt<U>(static_cast<U>(_value));
     }
 
-    // TODO: Narrowing conversions
-
     /**
      * @brief Narrowing cast that wraps around borders
      *
@@ -84,6 +82,8 @@ public:
      * - @p int16_t to @p int8_t
      *
      * @note It is only defined for platforms implementing two's complement
+     *
+     * @example ../tests/strong_types.cpp
      */
     template <std::integral U>
         requires Contains<T, U> && (std::bit_cast<uint8_t>(int8_t{ -1 }) == uint8_t{ 0xff })
@@ -100,6 +100,45 @@ public:
             const auto mask = static_cast<T>(U{ -1 }); // mask filled with ones for the size of U
             return StrongInt<U>(static_cast<U>(_value & mask));
         }
+    }
+
+    /**
+     * @brief Narrowing cast that discards value out of range
+     *
+     * @copydetails wrap
+     *
+     * @retval std::nullopt If the value does not fit into the resulting type
+     *
+     * @example ../tests/strong_types.cpp
+     */
+    template <std::integral U>
+        requires Contains<T, U>
+    [[nodiscard]] constexpr std::optional<StrongInt<U>> narrow() const noexcept {
+        if (_value >= static_cast<T>(std::numeric_limits<U>::min())
+            && _value <= static_cast<T>(std::numeric_limits<U>::max()))
+            return StrongInt<U>(static_cast<U>(_value));
+        else return std::nullopt;
+    }
+
+    // TODO: use for any types
+    /**
+     * @copydoc narrow
+     *
+     * @throw std::underflow_error If the value is too small for the resulting type
+     * @throw std::overflow_error If the value is too big for the resulting type
+     *
+     * @example ../tests/strong_types.cpp
+     */
+    template <std::integral U>
+        requires Contains<T, U>
+    [[nodiscard]] constexpr StrongInt<U> unsafe_cast() const noexcept(false) {
+        if (_value < static_cast<T>(std::numeric_limits<U>::min()))
+            throw std::underflow_error("Cannot cast strong integer: underflow");
+
+        if (_value > static_cast<T>(std::numeric_limits<U>::max()))
+            throw std::overflow_error("Cannot cast strong integer: overflow");
+
+        return StrongInt<U>(static_cast<U>(_value));
     }
 
 private:
