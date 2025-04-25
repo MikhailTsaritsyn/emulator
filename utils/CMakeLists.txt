@@ -8,8 +8,9 @@ target_sources(emulator_utils
     BASE_DIRS .
 
     FILES
+    mtl/core.hpp
     mtl/panic.hpp
-    mtl/strong_types.hpp
+    mtl/StrongInt.hpp
 
     PRIVATE
     src/panic.cpp
@@ -24,7 +25,7 @@ find_package(GTest REQUIRED)
 
 # Create test executable
 add_executable(emulator_utils_test
-    tests/strong_types.cpp
+    tests/StrongInt.cpp
 )
 target_link_libraries(emulator_utils_test PRIVATE emulator_utils gtest gtest_main)
 

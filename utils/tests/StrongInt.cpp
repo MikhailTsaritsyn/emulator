@@ -2,8 +2,7 @@
 // Created by Mikhail Tsaritsyn on Apr 23, 2025.
 //
 
-#include "mtl/strong_types.hpp"
-
+#include "mtl/core.hpp"
 #include <format>
 #include <gtest/gtest.h>
 

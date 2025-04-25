@@ -83,7 +83,7 @@ public:
      *
      * @note It is only defined for platforms implementing two's complement
      *
-     * @example ../tests/strong_types.cpp
+     * @example ../tests/StrongInt.cpp
      */
     template <std::integral U>
         requires Contains<T, U> && (std::bit_cast<uint8_t>(int8_t{ -1 }) == uint8_t{ 0xff })
@@ -109,7 +109,7 @@ public:
      *
      * @retval std::nullopt If the value does not fit into the resulting type
      *
-     * @example ../tests/strong_types.cpp
+     * @example ../tests/StrongInt.cpp
      */
     template <std::integral U>
         requires Contains<T, U>
@@ -126,7 +126,7 @@ public:
      * @throw std::underflow_error If the value is too small for the resulting type
      * @throw std::overflow_error If the value is too big for the resulting type
      *
-     * @example ../tests/strong_types.cpp
+     * @example ../tests/StrongInt.cpp
      */
     template <std::integral U>
         requires Contains<T, U>
@@ -248,47 +248,6 @@ private:
 
     T _value = 0;
 };
-
-/**
- * @brief 8-bit unsigned integer
- */
-using u8  = StrongInt<uint8_t>;
-
-/**
- * @brief 16-bit unsigned integer
- */
-using u16 = StrongInt<uint16_t>;
-
-/**
- * @brief 32-bit unsigned integer
- */
-using u32 = StrongInt<uint32_t>;
-
-/**
- * @brief 64-bit unsigned integer
- */
-using u64 = StrongInt<uint64_t>;
-
-/**
- * @brief 8-bit signed integer
- */
-using i8  = StrongInt<int8_t>;
-
-/**
- * @brief 16-bit signed integer
- */
-using i16 = StrongInt<int16_t>;
-
-/**
- * @brief 32-bit signed integer
- */
-using i32 = StrongInt<int32_t>;
-
-/**
- * @brief 64-bit signed integer
- */
-using i64 = StrongInt<int64_t>;
-
 } // namespace mtl
 
 template <std::integral T> struct std::formatter<mtl::StrongInt<T>> : std::formatter<T> {
