@@ -203,6 +203,49 @@ private:
 
     // TODO: all operators from https://en.cppreference.com/w/cpp/language/operator_incdec
 
+    /**
+     * @brief Add two integers
+     *
+     * If the overflow happens, the sum is wrapped.
+     * The overflow itself is returned as the second value.
+     *
+     * @retval first The (wrapped) result
+     * @retval second Whether the overflow happened
+     */
+    friend constexpr std::pair<StrongInt, bool> add_with_overflow(StrongInt lhs, StrongInt rhs) noexcept {
+        T result;
+        const auto overflow = __builtin_add_overflow(lhs._value, rhs._value, &result);
+        return { StrongInt(result), overflow };
+    }
+
+    /**
+     * @brief Add two integers with overflow detection
+     *
+     * If the overflow happens, the function traps.
+     * To get a wrapped sum, use @link add_with_overflow(StrongInt, StrongInt) @endlink.
+     */
+    friend constexpr StrongInt operator+(StrongInt lhs, StrongInt rhs) noexcept {
+        const auto [result, overflow] = add_with_overflow(lhs, rhs);
+        if (overflow) emulator::mos_6502::panic("StrongInt: overflow in addition");
+        return result;
+    }
+
+    /**
+     * @brief Add an integer in-place
+     *
+     * If the overflow happens, the function traps.
+     * To get a wrapped sum, use @link add_with_overflow(StrongInt, StrongInt) @endlink.
+     *
+     * @param[in, out] lhs This value will be updated with the resulting sum
+     * @param[in]      rhs The value to add to the @p lhs
+     *
+     * @return The resulting sum
+     */
+    friend constexpr StrongInt &operator+=(StrongInt &lhs, StrongInt rhs) noexcept {
+        lhs = lhs + rhs;
+        return lhs;
+    }
+
     T _value = 0;
 };
 

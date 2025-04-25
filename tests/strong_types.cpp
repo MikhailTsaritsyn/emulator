@@ -76,4 +76,38 @@ TEST(StrongInt, Print) {
     EXPECT_EQ(std::format("{}", i16(100)), "100");
     EXPECT_EQ(std::format("{:#04x}", u16(100)), "0x64");
 }
+
+TEST(StrongInt, Comparison) {
+    EXPECT_LT(u16(100), u16(200));
+    EXPECT_GT(u16(200), u16(100));
+    EXPECT_EQ(u16(100), u16(100));
+
+    EXPECT_LT(i16(100), i16(200));
+    EXPECT_GT(i16(200), i16(100));
+    EXPECT_EQ(i16(100), i16(100));
+    EXPECT_LT(i16(-200), i16(-100));
+    EXPECT_GT(i16(-100), i16(-200));
+    EXPECT_EQ(i16(-100), i16(-100));
+    EXPECT_LT(i16(-200), i16(0));
+    EXPECT_GT(i16(0), i16(-200));
+    EXPECT_EQ(i16(0), i16(0));
+}
+
+TEST(StrongInt, Addition) {
+    EXPECT_EQ((u16(150) + u16(230)).to_underlying(), 380);
+
+    EXPECT_DEATH(i8(100) + i8(100), "");
+
+    {
+        const auto [result, overflow] = add_with_overflow(i8(100), i8(100));
+        EXPECT_TRUE(overflow);
+        EXPECT_EQ(result.to_underlying(), -56);
+    }
+
+    {
+        const auto [result, overflow] = add_with_overflow(u8(200), u8(100));
+        EXPECT_TRUE(overflow);
+        EXPECT_EQ(result.to_underlying(), 44);
+    }
+}
 } // namespace mtl::test
