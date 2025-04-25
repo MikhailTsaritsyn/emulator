@@ -422,6 +422,37 @@ private:
         return lhs;
     }
 
+    friend constexpr StrongInt operator&(StrongInt lhs, StrongInt rhs) noexcept {
+        return StrongInt{ static_cast<T>(lhs._value & rhs._value) };
+    }
+
+    friend constexpr StrongInt &operator&=(StrongInt &lhs, StrongInt rhs) noexcept {
+        lhs = lhs & rhs;
+        return lhs;
+    }
+
+    friend constexpr StrongInt operator|(StrongInt lhs, StrongInt rhs) noexcept {
+        return StrongInt{ static_cast<T>(lhs._value | rhs._value) };
+    }
+
+    friend constexpr StrongInt &operator|=(StrongInt &lhs, StrongInt rhs) noexcept {
+        lhs = lhs | rhs;
+        return lhs;
+    }
+
+    friend constexpr StrongInt operator^(StrongInt lhs, StrongInt rhs) noexcept {
+        return StrongInt{ static_cast<T>(lhs._value ^ rhs._value) };
+    }
+
+    friend constexpr StrongInt &operator^=(StrongInt &lhs, StrongInt rhs) noexcept {
+        lhs = lhs ^ rhs;
+        return lhs;
+    }
+
+    friend constexpr StrongInt operator~(StrongInt sting) noexcept {
+        return StrongInt{ static_cast<T>(~sting._value) };
+    }
+
     T _value = 0;
 };
 } // namespace mtl

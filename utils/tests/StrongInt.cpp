@@ -223,4 +223,18 @@ TEST(StrongInt, Remainder) {
 
     EXPECT_EQ(u64(0xffffffffffffffffULL) % u64(2), u64(1));
 }
+
+TEST(StrongInt, Logical) {
+    EXPECT_EQ(u8(0b10101010) & u8(0b11001100), u8(0b10001000));
+    EXPECT_EQ(i8(-86) & i8(-52), i8(-120)); // the same, but in decimal to avoid conversions
+
+    EXPECT_EQ(u8(0b10101010) | u8(0b11001100), u8(0b11101110));
+    EXPECT_EQ(i8(-86) | i8(-52), i8(-18)); // the same, but in decimal to avoid conversions
+
+    EXPECT_EQ(u8(0b10101010) ^ u8(0b11001100), u8(0b01100110));
+    EXPECT_EQ(i8(-86) ^ i8(-52), i8(102)); // the same, but in decimal to avoid conversions
+
+    EXPECT_EQ(~u8(0b01001110), u8(0b10110001));
+    EXPECT_EQ(~i8(78), i8(-79)); // the same, but in decimal to avoid conversions
+}
 } // namespace mtl::test
