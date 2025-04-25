@@ -16,6 +16,7 @@
 // TODO: comparison to built-in types?
 // TODO: strong float and double
 // TODO: div and mod like in Python?
+// TODO: an option to remove the sign bit in right shift
 
 // TODO: fixed point
 
@@ -451,6 +452,69 @@ private:
 
     friend constexpr StrongInt operator~(StrongInt sting) noexcept {
         return StrongInt{ static_cast<T>(~sting._value) };
+    }
+
+    /**
+     * @brief Shift an integer left by a specified number of bits
+     *
+     * New bits appearing on the right are set to zero.
+     * Bits shifted away to the left are discarded.
+     *
+     * @retval first The result of the shift
+     * @retval second Overflow, which is only true if any discarded bit was set
+     */
+    friend constexpr std::pair<StrongInt, bool> shift_left(StrongInt sting, size_t shift) noexcept {
+        constexpr size_t N_BITS = 8 * sizeof(T);
+        if (shift > N_BITS) return { StrongInt(0), sting._value != 0 };
+        T mask = 0;
+        for (size_t i = N_BITS - shift; i < N_BITS; ++i) mask |= static_cast<T>(T{ 1 } << i);
+        return { StrongInt(static_cast<T>(sting._value << shift)), sting._value & mask };
+    }
+
+    /**
+     * @brief Shift an integer left by a specified number of bits
+     *
+     * Panics in case of an overflow.
+     * For details, see @link shift_left(StrongInt, size_t) @endlink.
+     */
+    friend constexpr StrongInt operator<<(StrongInt sting, size_t shift) noexcept {
+        const auto [result, overflow] = shift_left(sting, shift);
+        if (overflow) panic("StrongInt: overflow in left shift");
+        return result;
+    }
+
+    /**
+     * @brief Shift an integer left in-place by a specified number of bits
+     *
+     * Panics in case of an overflow.
+     * For details, see @link shift_left(StrongInt, size_t) @endlink.
+     */
+    friend constexpr StrongInt &operator<<=(StrongInt &sting, size_t shift) noexcept {
+        sting = sting << shift;
+        return sting;
+    }
+
+    /**
+     * @brief Shift an integer right by a specified number of bits
+     *
+     * New bits appearing on the left are set to zero.
+     * Bits shifted away to the right are discarded.
+     * If the value is signed, the sign bit remains intact.
+     */
+    friend constexpr StrongInt operator>>(StrongInt sting, size_t shift) noexcept {
+        return StrongInt{ static_cast<T>(sting._value >> shift) };
+    }
+
+    /**
+     * @brief Shift an integer right in-place by a specified number of bits
+     *
+     * New bits appearing on the left are set to zero.
+     * Bits shifted away to the right are discarded.
+     * If the value is signed, the sign bit remains intact.
+     */
+    friend constexpr StrongInt &operator>>=(StrongInt &sting, size_t shift) noexcept {
+        sting = sting >> shift;
+        return sting;
     }
 
     T _value = 0;

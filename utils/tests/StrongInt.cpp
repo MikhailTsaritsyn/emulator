@@ -237,4 +237,65 @@ TEST(StrongInt, Logical) {
     EXPECT_EQ(~u8(0b01001110), u8(0b10110001));
     EXPECT_EQ(~i8(78), i8(-79)); // the same, but in decimal to avoid conversions
 }
+
+TEST(StrongInt, LeftShift) {
+    EXPECT_EQ(u8(0b00000001) << 0, u8(0b00000001));
+    EXPECT_EQ(u8(0b00000001) << 1, u8(0b00000010));
+    EXPECT_EQ(u8(0b00000001) << 2, u8(0b00000100));
+    EXPECT_EQ(u8(0b00000001) << 3, u8(0b00001000));
+    EXPECT_EQ(u8(0b00000001) << 4, u8(0b00010000));
+    EXPECT_EQ(u8(0b00000001) << 5, u8(0b00100000));
+    EXPECT_EQ(u8(0b00000001) << 6, u8(0b01000000));
+    EXPECT_EQ(u8(0b00000001) << 7, u8(0b10000000));
+    EXPECT_DEATH(u8(0b00000001) << 8, "");
+    EXPECT_EQ(u8(0) << 8, u8(0));
+
+    EXPECT_EQ(i8(0b00000001) << 0, i8(0b00000001));
+    EXPECT_EQ(i8(0b00000001) << 1, i8(0b00000010));
+    EXPECT_EQ(i8(0b00000001) << 2, i8(0b00000100));
+    EXPECT_EQ(i8(0b00000001) << 3, i8(0b00001000));
+    EXPECT_EQ(i8(0b00000001) << 4, i8(0b00010000));
+    EXPECT_EQ(i8(0b00000001) << 5, i8(0b00100000));
+    EXPECT_EQ(i8(0b00000001) << 6, i8(0b01000000));
+    EXPECT_EQ(i8(0b00000001) << 7, i8(-128));
+    EXPECT_DEATH(i8(0b00000001) << 8, "");
+    EXPECT_EQ(i8(0) << 8, i8(0));
+
+    // 0b10000001 << 1 = 0b0000010, sign bit goes away
+    EXPECT_EQ(shift_left(i8(-127), 1).first, i8(0b00000010));
+
+    EXPECT_EQ(u64(0x4000000000000000ULL) << 1, u64(0x8000000000000000ULL));
+}
+
+TEST(StrongInt, RightShift) {
+    EXPECT_EQ(u8(0b10000000) >> 0, u8(0b10000000));
+    EXPECT_EQ(u8(0b10000000) >> 1, u8(0b01000000));
+    EXPECT_EQ(u8(0b10000000) >> 2, u8(0b00100000));
+    EXPECT_EQ(u8(0b10000000) >> 3, u8(0b00010000));
+    EXPECT_EQ(u8(0b10000000) >> 4, u8(0b00001000));
+    EXPECT_EQ(u8(0b10000000) >> 5, u8(0b00000100));
+    EXPECT_EQ(u8(0b10000000) >> 6, u8(0b00000010));
+    EXPECT_EQ(u8(0b10000000) >> 7, u8(0b00000001));
+    EXPECT_EQ(u8(0b10000000) >> 8, u8(0b00000000));
+
+    EXPECT_EQ(i8(0b01000000) >> 0, i8(0b01000000));
+    EXPECT_EQ(i8(0b01000000) >> 1, i8(0b00100000));
+    EXPECT_EQ(i8(0b01000000) >> 2, i8(0b00010000));
+    EXPECT_EQ(i8(0b01000000) >> 3, i8(0b00001000));
+    EXPECT_EQ(i8(0b01000000) >> 4, i8(0b00000100));
+    EXPECT_EQ(i8(0b01000000) >> 5, i8(0b00000010));
+    EXPECT_EQ(i8(0b01000000) >> 6, i8(0b00000001));
+    EXPECT_EQ(i8(0b01000000) >> 7, i8(0b00000000));
+
+    EXPECT_EQ(i8(-128) >> 0, i8(-128));
+    EXPECT_EQ(i8(-128) >> 1, i8(-64));
+    EXPECT_EQ(i8(-128) >> 2, i8(-32));
+    EXPECT_EQ(i8(-128) >> 3, i8(-16));
+    EXPECT_EQ(i8(-128) >> 4, i8(-8));
+    EXPECT_EQ(i8(-128) >> 5, i8(-4));
+    EXPECT_EQ(i8(-128) >> 6, i8(-2));
+    EXPECT_EQ(i8(-128) >> 7, i8(-1));
+    EXPECT_EQ(i8(-128) >> 8, i8(-1));
+    EXPECT_EQ(i8(-128) >> 9, i8(-1));
+}
 } // namespace mtl::test
