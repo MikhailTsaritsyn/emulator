@@ -138,4 +138,15 @@ TEST(StrongInt, Subtraction) {
         EXPECT_EQ(result, u8(156));
     }
 }
+
+TEST(StrongInt, Multiplication) {
+    EXPECT_EQ(u8(10) * u8(10), u8(100));
+    EXPECT_DEATH(u8(100) * u8(100), "");
+
+    EXPECT_EQ(u16(100) * u16(100), u16(10000));
+
+    EXPECT_EQ(i8(10) * i8(-10), i8(-100));
+    EXPECT_EQ(i8(127) * i8(-1), i8(-127));
+    EXPECT_DEATH(i8(-128) * i8(-1), "");
+}
 } // namespace mtl::test
