@@ -109,4 +109,33 @@ TEST(StrongInt, Addition) {
         EXPECT_EQ(result, u8(44));
     }
 }
+
+TEST(StrongInt, Subtraction) {
+    EXPECT_EQ(u16(300) - u16(120), u16(180));
+    EXPECT_DEATH(u16(300) - u16(400), "");
+
+    {
+        const auto [result, overflow] = sub_with_overflow(i8(100), i8(100));
+        EXPECT_FALSE(overflow);
+        EXPECT_EQ(result, i8(0));
+    }
+
+    {
+        const auto [result, overflow] = sub_with_overflow(i8(50), i8(100));
+        EXPECT_FALSE(overflow);
+        EXPECT_EQ(result, i8(-50));
+    }
+
+    {
+        const auto [result, overflow] = sub_with_overflow(i8(-50), i8(100));
+        EXPECT_TRUE(overflow);
+        EXPECT_EQ(result, i8(106));
+    }
+
+    {
+        const auto [result, overflow] = sub_with_overflow(u8(100), u8(200));
+        EXPECT_TRUE(overflow);
+        EXPECT_EQ(result, u8(156));
+    }
+}
 } // namespace mtl::test
