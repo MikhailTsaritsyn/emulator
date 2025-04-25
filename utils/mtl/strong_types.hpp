@@ -4,7 +4,7 @@
 
 #ifndef EMULATOR_STRONG_TYPES_HPP
 #define EMULATOR_STRONG_TYPES_HPP
-#include "helpers.hpp"
+#include "panic.hpp"
 #include <concepts>
 #include <cstdint>
 #include <format>
@@ -226,7 +226,7 @@ private:
      */
     friend constexpr StrongInt operator+(StrongInt lhs, StrongInt rhs) noexcept {
         const auto [result, overflow] = add_with_overflow(lhs, rhs);
-        if (overflow) emulator::mos_6502::panic("StrongInt: overflow in addition");
+        if (overflow) panic("StrongInt: overflow in addition");
         return result;
     }
 

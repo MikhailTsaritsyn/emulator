@@ -7,6 +7,7 @@
 #include "helpers.hpp"
 #include <chrono>
 #include <iostream>
+#include <mtl/panic.hpp>
 
 namespace emulator::mos_6502 {
 CPU::CPU(const std::chrono::nanoseconds clock_period, Memory memory) noexcept
@@ -136,14 +137,14 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
     if (!instruction) return false;
 
     const auto addressing = getAddressing(opcode);
-    if (!addressing) panic("A valid opcode must contain both instruction and addressing");
+    if (!addressing) mtl::panic("A valid opcode must contain both instruction and addressing");
 
     switch (*instruction) {
     case Instruction::LDA: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
             AC = read(PC++);
         else if (std::holds_alternative<uint16_t>(address)) AC = read(std::get<uint16_t>(address));
-        else panic("Unsupported addressing mode for LDA");
+        else mtl::panic("Unsupported addressing mode for LDA");
 
         SR.zero     = AC == 0;
         SR.negative = AC & 0x80;
@@ -153,7 +154,7 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address)) {
             wait_for_pulse();
             _memory.write(std::get<uint16_t>(address), AC);
-        } else panic("Unsupported addressing mode for STA");
+        } else mtl::panic("Unsupported addressing mode for STA");
     } break;
 
     case Instruction::ADC: {
@@ -162,7 +163,7 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         } else if (std::holds_alternative<uint16_t>(address)) {
             const auto arg = read(std::get<uint16_t>(address));
             AC = ALU::add(AC, arg, SR);
-        } else panic("Unsupported addressing mode for ADC");
+        } else mtl::panic("Unsupported addressing mode for ADC");
     } break;
 
     case Instruction::SBC: {
@@ -171,7 +172,7 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         } else if (std::holds_alternative<uint16_t>(address)) {
             const auto arg = read(std::get<uint16_t>(address));
             AC = ALU::subtract(AC, arg, SR);
-        } else panic("Unsupported addressing mode for SBC");
+        } else mtl::panic("Unsupported addressing mode for SBC");
     } break;
 
     case Instruction::AND: {
@@ -180,7 +181,7 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         } else if (std::holds_alternative<uint16_t>(address)) {
             const auto arg = read(std::get<uint16_t>(address));
             AC = ALU::logical_and(AC, arg, SR);
-        } else panic("Unsupported addressing mode for AND");
+        } else mtl::panic("Unsupported addressing mode for AND");
     } break;
 
     case Instruction::ORA: {
@@ -189,7 +190,7 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         } else if (std::holds_alternative<uint16_t>(address)) {
             const auto arg = read(std::get<uint16_t>(address));
             AC = ALU::logical_or(AC, arg, SR);
-        } else panic("Unsupported addressing mode for ORA");
+        } else mtl::panic("Unsupported addressing mode for ORA");
     } break;
 
     case Instruction::EOR: {
@@ -198,7 +199,7 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         } else if (std::holds_alternative<uint16_t>(address)) {
             const auto arg = read(std::get<uint16_t>(address));
             AC = ALU::logical_xor(AC, arg, SR);
-        } else panic("Unsupported addressing mode for EOR");
+        } else mtl::panic("Unsupported addressing mode for EOR");
     } break;
 
     case Instruction::SEC: {
@@ -239,7 +240,7 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
     case Instruction::JMP: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address))
             PC = std::get<uint16_t>(address);
-        else panic("Unsupported addressing mode for JMP");
+        else mtl::panic("Unsupported addressing mode for JMP");
     } break;
 
     case Instruction::BMI: PC = branch(SR.negative); break;
@@ -263,7 +264,7 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
             memory = read(PC++);
         else if (std::holds_alternative<uint16_t>(address)) memory = read(std::get<uint16_t>(address));
-        else panic("Unsupported addressing mode for CMP");
+        else mtl::panic("Unsupported addressing mode for CMP");
 
         compare(AC, memory, SR);
     } break;
@@ -274,14 +275,14 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
             SR.negative       = result & 0x80;
             SR.overflow       = result & 0x40;
             SR.zero           = result == 0;
-        } else panic("Unsupported addressing mode for BIT");
+        } else mtl::panic("Unsupported addressing mode for BIT");
     } break;
 
     case Instruction::LDX: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
             X = read(PC++);
         else if (std::holds_alternative<uint16_t>(address)) X = read(std::get<uint16_t>(address));
-        else panic("Unsupported addressing mode for LDX");
+        else mtl::panic("Unsupported addressing mode for LDX");
 
         SR.zero     = X == 0;
         SR.negative = X & 0x80;
@@ -291,7 +292,7 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
             Y = read(PC++);
         else if (std::holds_alternative<uint16_t>(address)) Y = read(std::get<uint16_t>(address));
-        else panic("Unsupported addressing mode for LDY");
+        else mtl::panic("Unsupported addressing mode for LDY");
 
         SR.zero     = Y == 0;
         SR.negative = Y & 0x80;
@@ -300,13 +301,13 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
     case Instruction::STX: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address))
             _memory.write(std::get<uint16_t>(address), X);
-        else panic("Unsupported addressing mode for STX");
+        else mtl::panic("Unsupported addressing mode for STX");
     } break;
 
     case Instruction::STY: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address))
             _memory.write(std::get<uint16_t>(address), Y);
-        else panic("Unsupported addressing mode for STY");
+        else mtl::panic("Unsupported addressing mode for STY");
     } break;
 
     case Instruction::INX: {
@@ -342,7 +343,7 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
             memory = read(PC++);
         else if (std::holds_alternative<uint16_t>(address)) memory = read(std::get<uint16_t>(address));
-        else panic("Unsupported addressing mode for CPX");
+        else mtl::panic("Unsupported addressing mode for CPX");
 
         compare(X, memory, SR);
     } break;
@@ -352,7 +353,7 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
             memory = read(PC++);
         else if (std::holds_alternative<uint16_t>(address)) memory = read(std::get<uint16_t>(address));
-        else panic("Unsupported addressing mode for CPY");
+        else mtl::panic("Unsupported addressing mode for CPY");
 
         compare(Y, memory, SR);
     } break;
@@ -477,7 +478,7 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
             wait_for_pulse();
             wait_for_pulse();
             _memory.write(std::get<uint16_t>(address), memory + 1);
-        } else panic("Unsupported addressing mode for INC");
+        } else mtl::panic("Unsupported addressing mode for INC");
     } break;
 
     case Instruction::DEC: {
@@ -492,12 +493,12 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
             wait_for_pulse();
             wait_for_pulse();
             _memory.write(std::get<uint16_t>(address), memory - 1);
-        } else panic("Unsupported addressing mode for INC");
+        } else mtl::panic("Unsupported addressing mode for INC");
     } break;
 
     case Instruction::NOP: wait_for_pulse(); break;
 
-    default: panic(std::format("Unhandled instruction {}", to_string(*instruction)));
+    default: mtl::panic(std::format("Unhandled instruction {}", to_string(*instruction)));
     }
 
     return true;
@@ -549,7 +550,7 @@ void CPU::compare(const uint8_t a, const uint8_t b, StatusRegister &sr) noexcept
 }
 
 void CPU::push(const uint8_t byte) noexcept {
-    if (!_memory.write(0x0100 & SP--, byte)) panic("Stack is read-only");
+    if (!_memory.write(0x0100 & SP--, byte)) mtl::panic("Stack is read-only");
 }
 
 void CPU::interrupt(const uint16_t handler_address) noexcept {
@@ -594,7 +595,7 @@ void CPU::shift_or_rotate(const Addressing addressing,
         const auto result = operation(memory, SR);
         wait_for_pulse();
         _memory.write(std::get<uint16_t>(address), result);
-    } else panic("Unsupported addressing mode for " + to_string(instruction));
+    } else mtl::panic("Unsupported addressing mode for " + to_string(instruction));
 }
 
 uint16_t CPU::fetch_absolute_address_long(const uint8_t index) noexcept {

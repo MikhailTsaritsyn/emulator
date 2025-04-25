@@ -19,7 +19,6 @@ target_sources(emulator_core
     include/Memory.hpp
     include/Opcode.hpp
     include/StatusRegister.hpp
-    include/strong_types.hpp
 
     PRIVATE
     src/ALU.cpp
@@ -38,6 +37,10 @@ target_link_libraries(emulator PRIVATE emulator_core)
 target_compile_options(emulator PRIVATE -Werror)
 target_compile_features(emulator PUBLIC cxx_std_23)
 
+# Dependencies
+add_subdirectory(utils)
+target_link_libraries(emulator_core PUBLIC emulator_utils)
+
 # Find GoogleTest
 find_package(GTest REQUIRED)
 
@@ -49,7 +52,6 @@ add_executable(emulator_test
     tests/decimal_arithmetic.cpp
     tests/logical_operations.cpp
     tests/programs.cpp
-    tests/strong_types.cpp
 )
 target_link_libraries(emulator_test PRIVATE emulator_core gtest gtest_main)
 

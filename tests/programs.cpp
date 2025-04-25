@@ -9,6 +9,7 @@
 
 #include "CPU.hpp"
 #include "helpers.hpp"
+#include <mtl/panic.hpp>
 #include <gtest/gtest.h>
 
 namespace emulator::mos_6502::test {
@@ -43,7 +44,7 @@ struct Program : public ::testing::Test {
      */
     [[nodiscard]] static std::pair<Memory::Data, size_t> assemble(const std::vector<uint8_t> &code) noexcept {
         Memory::Data result{};
-        if (code.size() > result.size()) panic("Code is too long to fit in memory");
+        if (code.size() > result.size()) mtl::panic("Code is too long to fit in memory");
 
         result[PROGRAM_START] = 0x58; // CLI, to clear the interrupt disable flag set at startup
         std::ranges::copy(code, result.begin() + PROGRAM_START + 1);

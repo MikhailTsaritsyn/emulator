@@ -24,11 +24,6 @@ std::pair<uint8_t, SignedOverflow> add_with_overflow(uint8_t u, int8_t i) noexce
     return { result, overflow };
 }
 
-void panic(const std::string_view message) {
-    std::cerr << message << std::endl;
-    __builtin_trap();
-}
-
 std::string to_string(const Instruction instruction) noexcept {
     switch (instruction) {
     case Instruction::ADC: return "ADC";
