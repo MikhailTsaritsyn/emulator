@@ -149,4 +149,78 @@ TEST(StrongInt, Multiplication) {
     EXPECT_EQ(i8(127) * i8(-1), i8(-127));
     EXPECT_DEATH(i8(-128) * i8(-1), "");
 }
+
+TEST(StrongInt, Division) {
+    EXPECT_FALSE(div(u8(100), u8(0)));
+    EXPECT_EQ(div(u8(100), u8(25)), u8(4));
+    EXPECT_EQ(div(u8(100), u8(30)), u8(3));
+
+    EXPECT_FALSE(div(i8(100), i8(0)));
+    EXPECT_FALSE(div(i8(-128), i8(-1)));
+    EXPECT_EQ(div(i8(10), i8(-1)), i8(-10));
+    EXPECT_EQ(div(i8(-10), i8(-1)), i8(10));
+    EXPECT_EQ(div(i8(127), i8(-1)), i8(-127));
+    EXPECT_EQ(div(i8(-127), i8(-1)), i8(127));
+
+    EXPECT_DEATH(u8(100) / u8(0), "");
+    EXPECT_DEATH(u16(100) / u16(0), "");
+    EXPECT_DEATH(i16(100) / i16(0), "");
+    EXPECT_DEATH(i16(std::numeric_limits<int16_t>::min()) / i16(-1), "");
+
+    EXPECT_EQ(u16(2000) / u16(1000), u16(2));
+    EXPECT_EQ(u16(1000) / u16(1000), u16(1));
+    EXPECT_EQ(u16(500) / u16(1000), u16(0));
+    EXPECT_EQ(u16(500) / u16(200), u16(2));
+
+    EXPECT_EQ(i16(1000) / i16(-10), i16(-100));
+    EXPECT_EQ(i16(-1000) / i16(10), i16(-100));
+    EXPECT_EQ(i16(100) / i16(-100), i16(-1));
+    EXPECT_EQ(i16(-100) / i16(100), i16(-1));
+    EXPECT_EQ(i16(100) / i16(-1000), i16(0));
+    EXPECT_EQ(i16(-100) / i16(1000), i16(0));
+
+    EXPECT_EQ(i16(100) / i16(30), i16(3));
+    EXPECT_EQ(i16(100) / i16(-30), i16(-3));
+    EXPECT_EQ(i16(-100) / i16(30), i16(-3));
+    EXPECT_EQ(i16(-100) / i16(-30), i16(3));
+
+    EXPECT_EQ(u64(0xffffffffffffffffULL) / u64(2), u64(0x7fffffffffffffffULL));
+}
+
+TEST(StrongInt, Remainder) {
+    EXPECT_FALSE(mod(u8(100), u8(0)));
+    EXPECT_EQ(mod(u8(100), u8(25)), u8(0));
+    EXPECT_EQ(mod(u8(100), u8(30)), u8(10));
+
+    EXPECT_FALSE(mod(i8(100), i8(0)));
+    EXPECT_EQ(mod(i8(-128), i8(-1)), i8(0));
+    EXPECT_EQ(mod(i8(10), i8(-1)), i8(0));
+    EXPECT_EQ(mod(i8(-10), i8(-1)), i8(0));
+    EXPECT_EQ(mod(i8(127), i8(-1)), i8(0));
+    EXPECT_EQ(mod(i8(-127), i8(-1)), i8(0));
+
+    EXPECT_DEATH(u8(100) % u8(0), "");
+    EXPECT_DEATH(u16(100) % u16(0), "");
+    EXPECT_DEATH(i16(100) % i16(0), "");
+    EXPECT_EQ(i16(std::numeric_limits<int16_t>::min()) % i16(-1), i16(0));
+
+    EXPECT_EQ(u16(2000) % u16(1000), u16(0));
+    EXPECT_EQ(u16(1000) % u16(1000), u16(0));
+    EXPECT_EQ(u16(500) % u16(1000), u16(500));
+    EXPECT_EQ(u16(500) % u16(200), u16(100));
+
+    EXPECT_EQ(i16(999) % i16(-10), i16(9));
+    EXPECT_EQ(i16(-999) % i16(10), i16(-9));
+    EXPECT_EQ(i16(100) % i16(-100), i16(0));
+    EXPECT_EQ(i16(-100) % i16(100), i16(0));
+    EXPECT_EQ(i16(100) % i16(-1000), i16(100));
+    EXPECT_EQ(i16(-100) % i16(1000), i16(-100));
+
+    EXPECT_EQ(i16(100) % i16(30), i16(10));
+    EXPECT_EQ(i16(100) % i16(-30), i16(10));
+    EXPECT_EQ(i16(-100) % i16(30), i16(-10));
+    EXPECT_EQ(i16(-100) % i16(-30), i16(-10));
+
+    EXPECT_EQ(u64(0xffffffffffffffffULL) % u64(2), u64(1));
+}
 } // namespace mtl::test

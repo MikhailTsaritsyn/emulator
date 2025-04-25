@@ -7,12 +7,15 @@
 #include "panic.hpp"
 #include <concepts>
 #include <cstdint>
+#include <expected>
 #include <format>
 #include <ostream>
+#include <utility>
 
 // TODO: comparison between different types? (with unsafe_cast'ing)
 // TODO: comparison to built-in types?
 // TODO: strong float and double
+// TODO: div and mod like in Python?
 
 // TODO: fixed point
 
@@ -330,6 +333,92 @@ private:
      */
     friend constexpr StrongInt &operator*=(StrongInt &lhs, StrongInt rhs) noexcept {
         lhs = lhs * rhs;
+        return lhs;
+    }
+
+    enum struct IntegerDivisionError { ZeroDivision, Overflow };
+
+    /**
+     * @brief Integer division
+     *
+     * @retval std::nullopt If the @p rhs is zero
+     * @retval std::nullopt If the result cannot fit into the type.
+     *                      It only happens in one case: when the type is signed, the @p lhs is its minimal value,
+     *                      and the rhs is -1.
+     *
+     * @return The result of integer division
+     */
+    friend constexpr std::expected<StrongInt, IntegerDivisionError> div(StrongInt lhs, StrongInt rhs) noexcept {
+        if (rhs._value == 0) return std::unexpected(IntegerDivisionError::ZeroDivision);
+        if constexpr (std::is_signed_v<T>)
+            if (rhs._value == -1 && lhs._value == std::numeric_limits<T>::min())
+                return std::unexpected(IntegerDivisionError::Overflow);
+        return StrongInt{ static_cast<T>(lhs._value / rhs._value) };
+    }
+
+    /**
+     * @brief Integer division
+     *
+     * It panics in two cases:
+     * - division by zero
+     * - overflow (for signed types only).
+     *
+     * See @link div(StrongInt, StrongInt) @endlink for details.
+     */
+    friend constexpr StrongInt operator/(StrongInt lhs, StrongInt rhs) noexcept {
+        const auto result = div(lhs, rhs);
+        if (!result) {
+            switch (result.error()) {
+            case IntegerDivisionError::ZeroDivision: panic("StrongInt: division by zero");
+            case IntegerDivisionError::Overflow: panic("StrongInt: overflow in division");
+            }
+            std::unreachable();
+        }
+        return *result;
+    }
+
+    /**
+     * @brief In-place integer division
+     *
+     * It panics in two cases:
+     * - division by zero
+     * - overflow (for signed types only).
+     *
+     * See @link div(StrongInt, StrongInt) @endlink for details.
+     */
+    friend constexpr StrongInt &operator/=(StrongInt &lhs, StrongInt rhs) noexcept {
+        lhs = lhs / rhs;
+        return lhs;
+    }
+
+    /**
+     * @brief The remainder of integer division
+     *
+     * @retval std::nullopt If the @p rhs is zero
+     */
+    friend constexpr std::optional<StrongInt> mod(StrongInt lhs, StrongInt rhs) noexcept {
+        if (rhs._value == 0) return std::nullopt;
+        return StrongInt{ static_cast<T>(lhs._value % rhs._value) };
+    }
+
+    /**
+     * @brief The remainder of integer division
+     *
+     * If the divisor is zero, it panics.
+     */
+    friend constexpr StrongInt operator%(StrongInt lhs, StrongInt rhs) noexcept {
+        const auto result = mod(lhs, rhs);
+        if (!result) panic("StrongInt: division by zero");
+        return *result;
+    }
+
+    /**
+     * @brief In-place remainder of integer division
+     *
+     * If the divisor is zero, it panics.
+     */
+    friend constexpr StrongInt &operator%=(StrongInt &lhs, StrongInt rhs) noexcept {
+        lhs = lhs % rhs;
         return lhs;
     }
 
