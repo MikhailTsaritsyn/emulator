@@ -93,20 +93,20 @@ TEST(StrongInt, Comparison) {
 }
 
 TEST(StrongInt, Addition) {
-    EXPECT_EQ((u16(150) + u16(230)).to_underlying(), 380);
+    EXPECT_EQ(u16(150) + u16(230), u16(380));
 
     EXPECT_DEATH(i8(100) + i8(100), "");
 
     {
         const auto [result, overflow] = add_with_overflow(i8(100), i8(100));
         EXPECT_TRUE(overflow);
-        EXPECT_EQ(result.to_underlying(), -56);
+        EXPECT_EQ(result, i8(-56));
     }
 
     {
         const auto [result, overflow] = add_with_overflow(u8(200), u8(100));
         EXPECT_TRUE(overflow);
-        EXPECT_EQ(result.to_underlying(), 44);
+        EXPECT_EQ(result, u8(44));
     }
 }
 } // namespace mtl::test

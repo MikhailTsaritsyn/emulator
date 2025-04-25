@@ -10,7 +10,8 @@
 #include <format>
 #include <ostream>
 
-// TODO: split signed and unsigned?
+// TODO: comparison between different types? (with unsafe_cast'ing)
+// TODO: comparison to built-in types?
 // TODO: strong float and double
 
 // TODO: fixed point
@@ -202,6 +203,10 @@ private:
     }
 
     // TODO: all operators from https://en.cppreference.com/w/cpp/language/operator_incdec
+
+    friend constexpr auto operator<=>(StrongInt lhs, StrongInt rhs) noexcept { return lhs._value <=> rhs._value; }
+
+    friend constexpr bool operator==(StrongInt lhs, StrongInt rhs) noexcept = default;
 
     /**
      * @brief Add two integers
