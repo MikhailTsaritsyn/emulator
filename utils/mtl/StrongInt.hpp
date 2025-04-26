@@ -241,14 +241,54 @@ public:
         return *this = *new_value;
     }
 
+    /**
+     * @brief Decrement the value of an integer
+     *
+     * Overflow if the integer has the minimum value of the type.
+     *
+     * @retval std::nullopt Only in case of overflow
+     */
+    friend constexpr std::optional<StrongInt> dec(StrongInt sting) noexcept {
+        if (sting._value == std::numeric_limits<T>::min()) return std::nullopt;
+        return StrongInt{ static_cast<T>(sting._value - 1) };
+    }
+
+    /**
+     * @copybrief dec(StrongInt)
+     *
+     * @copydetails dec(StrongInt)
+     *
+     * Panics in case of overflow.
+     *
+     * @return The non-decremented value
+     */
+    constexpr StrongInt operator--(int) noexcept {
+        const auto new_value = dec(*this);
+        if (!new_value) panic("StrongInt: overflow in decrement");
+        return std::exchange(*this, *new_value);
+    }
+
+    /**
+     * @copybrief dec(StrongInt)
+     *
+     * @copydetails dec(StrongInt)
+     *
+     * Panics in case of overflow.
+     *
+     * @return Reference to the incremented value
+     */
+    constexpr StrongInt &operator--() noexcept {
+        const auto new_value = dec(*this);
+        if (!new_value) panic("StrongInt: overflow in decrement");
+        return *this = *new_value;
+    }
+
 private:
     friend std::ostream &operator<<(std::ostream &os, const StrongInt sting) noexcept {
         if constexpr (sizeof(T) == 1) // avoid printing as characters
             return os << static_cast<int>(sting.to_underlying());
         return os << sting._value;
     }
-
-    // TODO: all operators from https://en.cppreference.com/w/cpp/language/operator_incdec
 
     friend constexpr auto operator<=>(StrongInt lhs, StrongInt rhs) noexcept { return lhs._value <=> rhs._value; }
 

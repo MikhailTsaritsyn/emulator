@@ -365,4 +365,60 @@ TEST(StrongInt, Increment) {
         EXPECT_EQ(++n, StrongInt(std::numeric_limits<size_t>::max()));
     }
 }
+
+TEST(StrongInt, Decrement) {
+    EXPECT_FALSE(dec(u16(0)));
+    EXPECT_EQ(dec(u8(255)), u8(254));
+    {
+        u16 n(0);
+        EXPECT_DEATH(n--, "");
+    }
+    {
+        u8 n(255);
+        n--;
+        EXPECT_EQ(n, u8(254));
+    }
+    {
+        u16 n(0);
+        EXPECT_DEATH(--n, "");
+    }
+    {
+        u8 n(255);
+        EXPECT_EQ(--n, u8(254));
+    }
+
+    EXPECT_FALSE(dec(i8(-128)));
+    EXPECT_EQ(dec(i8(127)), i8(126));
+    EXPECT_EQ(dec(i8(0)), i8(-1));
+    {
+        i8 n(-128);
+        EXPECT_DEATH(n--, "");
+    }
+    {
+        i16 n(0);
+        n--;
+        EXPECT_EQ(n, i16(-1));
+    }
+    {
+        i8 n(-128);
+        EXPECT_DEATH(--n, "");
+    }
+    {
+        i16 n(0);
+        EXPECT_EQ(--n, i16(-1));
+    }
+
+    {
+        StrongInt<size_t> n(0);
+        EXPECT_DEATH(n--, "");
+    }
+    {
+        StrongInt<size_t> n(0);
+        EXPECT_DEATH(--n, "");
+    }
+    {
+        StrongInt<size_t> n(std::numeric_limits<size_t>::max());
+        EXPECT_EQ(--n, StrongInt(std::numeric_limits<size_t>::max() - 1));
+    }
+}
 } // namespace mtl::test
