@@ -310,4 +310,59 @@ TEST(StrongInt, Negation) {
 
     // -u8(100); // does not compile
 }
+
+TEST(StrongInt, Increment) {
+    EXPECT_FALSE(inc(u8(255)));
+    EXPECT_EQ(inc(u8(0)), u8(1));
+    {
+        u8 n(255);
+        EXPECT_DEATH(n++, "");
+    }
+    {
+        u16 n(0);
+        n++;
+        EXPECT_EQ(n, u16(1));
+    }
+    {
+        u8 n(255);
+        EXPECT_DEATH(++n, "");
+    }
+    {
+        u16 n(0);
+        EXPECT_EQ(++n, u16(1));
+    }
+
+    EXPECT_FALSE(inc(i8(127)));
+    EXPECT_EQ(inc(i8(0)), i8(1));
+    {
+        i8 n(127);
+        EXPECT_DEATH(n++, "");
+    }
+    {
+        i16 n(0);
+        n++;
+        EXPECT_EQ(n, i16(1));
+    }
+    {
+        i8 n(127);
+        EXPECT_DEATH(++n, "");
+    }
+    {
+        i16 n(0);
+        EXPECT_EQ(++n, i16(1));
+    }
+
+    {
+        StrongInt n(std::numeric_limits<size_t>::max());
+        EXPECT_DEATH(n++, "");
+    }
+    {
+        StrongInt n(std::numeric_limits<size_t>::max());
+        EXPECT_DEATH(++n, "");
+    }
+    {
+        StrongInt<size_t> n(std::numeric_limits<size_t>::max() - 1);
+        EXPECT_EQ(++n, StrongInt(std::numeric_limits<size_t>::max()));
+    }
+}
 } // namespace mtl::test

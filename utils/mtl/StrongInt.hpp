@@ -199,6 +199,48 @@ public:
         }
     }
 
+    /**
+     * @brief Increment the value of an integer
+     *
+     * Overflow if the integer has the maximum value of the type.
+     *
+     * @retval std::nullopt Only in case of overflow
+     */
+    friend constexpr std::optional<StrongInt> inc(StrongInt sting) noexcept {
+        if (sting._value == std::numeric_limits<T>::max()) return std::nullopt;
+        return StrongInt{ static_cast<T>(sting._value + 1) };
+    }
+
+    /**
+     * @copybrief inc(StrongInt)
+     *
+     * @copydetails inc(StrongInt)
+     *
+     * Panics in case of overflow.
+     *
+     * @return The non-incremented value
+     */
+    constexpr StrongInt operator++(int) noexcept {
+        const auto new_value = inc(*this);
+        if (!new_value) panic("StrongInt: overflow in increment");
+        return std::exchange(*this, *new_value);
+    }
+
+    /**
+     * @copybrief inc(StrongInt)
+     *
+     * @copydetails inc(StrongInt)
+     *
+     * Panics in case of overflow.
+     *
+     * @return Reference to the incremented value
+     */
+    constexpr StrongInt &operator++() noexcept {
+        const auto new_value = inc(*this);
+        if (!new_value) panic("StrongInt: overflow in increment");
+        return *this = *new_value;
+    }
+
 private:
     friend std::ostream &operator<<(std::ostream &os, const StrongInt sting) noexcept {
         if constexpr (sizeof(T) == 1) // avoid printing as characters
