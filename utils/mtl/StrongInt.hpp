@@ -517,6 +517,40 @@ private:
         return sting;
     }
 
+    /**
+     * Has no effect
+     */
+    friend constexpr StrongInt operator+(StrongInt sting) noexcept { return sting; }
+
+    /**
+     * @brief Change the sign of an integer
+     *
+     * May overflow if the integer is the minimal possible value, for example, -128 for @c int8_t.
+     *
+     * @retval std::nullopt Only in case of overflow.
+     */
+    friend constexpr std::optional<StrongInt> negate(StrongInt sting) noexcept
+        requires std::is_signed_v<T>
+    {
+        if (sting._value == std::numeric_limits<T>::min()) return std::nullopt;
+        return StrongInt{ static_cast<T>(-sting._value) };
+    }
+
+    /**
+     * @copybrief negate
+     *
+     * @copydetails negate
+     *
+     * Panics in case of overflow
+     */
+    friend constexpr StrongInt operator-(StrongInt sting) noexcept
+        requires std::is_signed_v<T>
+    {
+        const auto result = negate(sting);
+        if (!result) panic("StrongInt: overflow in negation");
+        return *result;
+    }
+
     T _value = 0;
 };
 } // namespace mtl

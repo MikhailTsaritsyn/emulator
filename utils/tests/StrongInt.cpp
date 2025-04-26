@@ -298,4 +298,16 @@ TEST(StrongInt, RightShift) {
     EXPECT_EQ(i8(-128) >> 8, i8(-1));
     EXPECT_EQ(i8(-128) >> 9, i8(-1));
 }
+
+TEST(StrongInt, Negation) {
+    EXPECT_FALSE(negate(i8(-128)));
+    EXPECT_DEATH(-i8(-128), "");
+
+    EXPECT_EQ(*negate(i8(127)), i8(-127));
+    EXPECT_EQ(-i8(127), i8(-127));
+
+    EXPECT_EQ(-i64(std::numeric_limits<int64_t>::max()), i64(std::numeric_limits<int64_t>::min() + 1));
+
+    // -u8(100); // does not compile
+}
 } // namespace mtl::test
