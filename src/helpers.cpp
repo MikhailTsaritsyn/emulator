@@ -8,20 +8,14 @@
 #include <iostream>
 
 namespace emulator::mos_6502 {
-std::pair<uint8_t, bool> add_with_overflow(const uint8_t a, const uint8_t b) noexcept {
-    uint8_t result;
-    const auto overflow = __builtin_add_overflow(a, b, &result);
-    return { result, overflow };
-}
-
-std::pair<uint8_t, SignedOverflow> add_with_overflow(uint8_t u, int8_t i) noexcept {
-    const auto result   = static_cast<int16_t>(u) + static_cast<int16_t>(i);
+std::pair<mtl::u8, SignedOverflow> add_with_overflow(const mtl::u8 u, const mtl::i8 i) noexcept {
+    const auto result   = mtl::i16(u) + mtl::i16(i);
     const auto overflow = [result] {
-        if (result < 0) return SignedOverflow::Negative;
-        if (result > std::numeric_limits<uint8_t>::max()) return SignedOverflow::Positive;
+        if (result < mtl::i16(0)) return SignedOverflow::Negative;
+        if (result > mtl::i16(std::numeric_limits<uint8_t>::max())) return SignedOverflow::Positive;
         return SignedOverflow::None;
     }();
-    return { result, overflow };
+    return { result.wrap<uint8_t>(), overflow };
 }
 
 std::string to_string(const Instruction instruction) noexcept {
@@ -87,11 +81,11 @@ std::string to_string(const Instruction instruction) noexcept {
     return std::format("{:d}", std::to_underlying(instruction));
 }
 
-uint8_t low_byte(const uint16_t word) noexcept { return static_cast<uint8_t>(word & 0x00ff); }
+mtl::u8 low_byte(const uint16_t word) noexcept { return mtl::u8(static_cast<uint8_t>(word & 0x00ff)); }
 
-uint8_t high_byte(const uint16_t word) noexcept { return static_cast<uint8_t>(word >> 8); }
+mtl::u8 high_byte(const uint16_t word) noexcept { return mtl::u8(static_cast<uint8_t>(word >> 8)); }
 
-uint16_t make_word(const uint8_t high, const uint8_t low) noexcept {
-    return static_cast<uint16_t>(high) << 8 | static_cast<uint16_t>(low);
+uint16_t make_word(const mtl::u8 high, const mtl::u8 low) noexcept {
+    return (mtl::u16(high) << 8 | mtl::u16(low)).to_underlying();
 }
 } // namespace emulator::mos_6502

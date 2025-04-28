@@ -25,7 +25,7 @@ struct Program : public ::testing::Test {
      * When the CPU encounters an illegal opcode, it terminates.
      * It can be used in testing to terminate right after the provided code is executed.
      */
-    static constexpr uint8_t HLT = 0x02;
+    static constexpr mtl::u8 HLT{ 0x02 };
 
     /**
      * @brief Number of cycles elapsing during the startup routine
@@ -42,11 +42,11 @@ struct Program : public ::testing::Test {
      * @retval first Chunk of memory containing the code, prepared to run a CPU on it.
      * @retval second Index in the resulting memory past the @p HLT opcode.
      */
-    [[nodiscard]] static std::pair<Memory::Data, size_t> assemble(const std::vector<uint8_t> &code) noexcept {
+    [[nodiscard]] static std::pair<Memory::Data, size_t> assemble(const std::vector<mtl::u8> &code) noexcept {
         Memory::Data result{};
         if (code.size() > result.size()) mtl::panic("Code is too long to fit in memory");
 
-        result[PROGRAM_START] = 0x58; // CLI, to clear the interrupt disable flag set at startup
+        result[PROGRAM_START] = mtl::u8(0x58); // CLI, to clear the interrupt disable flag set at startup
         std::ranges::copy(code, result.begin() + PROGRAM_START + 1);
 
         result[PROGRAM_START + 1 + code.size()] = HLT;
@@ -80,51 +80,51 @@ TEST_F(Program, Add16Bit) {
     constexpr uint8_t L3 = 0x04;
     constexpr uint8_t H3 = 0x05;
 
-    std::vector<uint8_t> code;
+    std::vector<mtl::u8> code;
     size_t code_duration = 0;
 
     // LDA L1
-    code.push_back(0xA5); // LDA zero page: 2 bytes, 3 cycles
-    code.push_back(L1);
+    code.emplace_back(0xA5); // LDA zero page: 2 bytes, 3 cycles
+    code.emplace_back(L1);
     code_duration += 3;
 
     // CLC
-    code.push_back(0x18); // CLC: 1 byte, 2 cycles
+    code.emplace_back(0x18); // CLC: 1 byte, 2 cycles
     code_duration += 2;
 
     // ADC L2
-    code.push_back(0x65); // ADC zero page: 2 bytes, 3 cycles
-    code.push_back(L2);
+    code.emplace_back(0x65); // ADC zero page: 2 bytes, 3 cycles
+    code.emplace_back(L2);
     code_duration += 3;
 
     // STA L3
-    code.push_back(0x85); // STA zero page: 2 bytes, 3 cycles
-    code.push_back(L3);
+    code.emplace_back(0x85); // STA zero page: 2 bytes, 3 cycles
+    code.emplace_back(L3);
     code_duration += 3;
 
     // LDA H1
-    code.push_back(0xA5); // LDA zero page: 2 bytes, 3 cycles
-    code.push_back(H1);
+    code.emplace_back(0xA5); // LDA zero page: 2 bytes, 3 cycles
+    code.emplace_back(H1);
     code_duration += 3;
 
     // ADC H2
-    code.push_back(0x65); // ADC zero page: 2 bytes, 3 cycles
-    code.push_back(H2);
+    code.emplace_back(0x65); // ADC zero page: 2 bytes, 3 cycles
+    code.emplace_back(H2);
     code_duration += 3;
 
     // STA H3
-    code.push_back(0x85); // STA zero page: 2 bytes, 3 cycles
-    code.push_back(H3);
+    code.emplace_back(0x85); // STA zero page: 2 bytes, 3 cycles
+    code.emplace_back(H3);
     code_duration += 3;
 
     // insert the code to the memory
     auto [data, program_end] = assemble(code);
 
     // initialize the arguments
-    data[L1] = 0x93;
-    data[L2] = 0x75;
-    data[H1] = 0x03;
-    data[H2] = 0x34;
+    data[L1] = mtl::u8(0x93);
+    data[L2] = mtl::u8(0x75);
+    data[H1] = mtl::u8(0x03);
+    data[H2] = mtl::u8(0x34);
 
     // execute the program
     CPU cpu(std::chrono::nanoseconds(0), Memory(data));
@@ -153,38 +153,38 @@ TEST_F(Program, DecimalAddition) {
     constexpr uint8_t ADDR_SECOND = 0x01;
     constexpr uint8_t ADDR_RESULT = 0x02;
 
-    std::vector<uint8_t> code;
+    std::vector<mtl::u8> code;
     size_t code_duration = 0;
 
     // CLC
-    code.push_back(0x18); // 1 byte, 2 cycles
+    code.emplace_back(0x18); // 1 byte, 2 cycles
     code_duration += 2;
 
     // SED
-    code.push_back(0xF8); // 1 byte, 2 cycles
+    code.emplace_back(0xF8); // 1 byte, 2 cycles
     code_duration += 2;
 
     // LDA zero page
-    code.push_back(0xA5); // 2 bytes, 3 cycles
-    code.push_back(ADDR_FIRST);
+    code.emplace_back(0xA5); // 2 bytes, 3 cycles
+    code.emplace_back(ADDR_FIRST);
     code_duration += 3;
 
     // ADC zero page
-    code.push_back(0x65); // 2 bytes, 3 cycles
-    code.push_back(ADDR_SECOND);
+    code.emplace_back(0x65); // 2 bytes, 3 cycles
+    code.emplace_back(ADDR_SECOND);
     code_duration += 3;
 
     // STA zero page
-    code.push_back(0x85); // 2 bytes, 3 cycles
-    code.push_back(ADDR_RESULT);
+    code.emplace_back(0x85); // 2 bytes, 3 cycles
+    code.emplace_back(ADDR_RESULT);
     code_duration += 3;
 
     // insert the code to the memory
     auto [data, program_end] = assemble(code);
 
     // initialize the arguments
-    data[ADDR_FIRST]  = 0x79;
-    data[ADDR_SECOND] = 0x14;
+    data[ADDR_FIRST]  = mtl::u8(0x79);
+    data[ADDR_SECOND] = mtl::u8(0x14);
 
     // execute the program
     CPU cpu(std::chrono::nanoseconds(0), Memory(data));
@@ -217,51 +217,51 @@ TEST_F(Program, Subtract16Bit) {
     constexpr uint8_t L3 = 0x04;
     constexpr uint8_t H3 = 0x05;
 
-    std::vector<uint8_t> code;
+    std::vector<mtl::u8> code;
     size_t code_duration = 0;
 
     // SEC
-    code.push_back(0x38); // 1 byte, 2 cycles
+    code.emplace_back(0x38); // 1 byte, 2 cycles
     code_duration += 2;
 
     // LDA L1
-    code.push_back(0xA5); // LDA zero page: 2 bytes, 3 cycles
-    code.push_back(L1);
+    code.emplace_back(0xA5); // LDA zero page: 2 bytes, 3 cycles
+    code.emplace_back(L1);
     code_duration += 3;
 
     // SBC L2
-    code.push_back(0xE5); // SBC zero page: 2 bytes, 3 cycles
-    code.push_back(L2);
+    code.emplace_back(0xE5); // SBC zero page: 2 bytes, 3 cycles
+    code.emplace_back(L2);
     code_duration += 3;
 
     // STA L3
-    code.push_back(0x85); // STA zero page: 2 bytes, 3 cycles
-    code.push_back(L3);
+    code.emplace_back(0x85); // STA zero page: 2 bytes, 3 cycles
+    code.emplace_back(L3);
     code_duration += 3;
 
     // LDA H1
-    code.push_back(0xA5); // LDA zero page: 2 bytes, 3 cycles
-    code.push_back(H1);
+    code.emplace_back(0xA5); // LDA zero page: 2 bytes, 3 cycles
+    code.emplace_back(H1);
     code_duration += 3;
 
     // SBC H2
-    code.push_back(0xE5); // SBC zero page: 2 bytes, 3 cycles
-    code.push_back(H2);
+    code.emplace_back(0xE5); // SBC zero page: 2 bytes, 3 cycles
+    code.emplace_back(H2);
     code_duration += 3;
 
     // STA H3
-    code.push_back(0x85); // STA zero page: 2 bytes, 3 cycles
-    code.push_back(H3);
+    code.emplace_back(0x85); // STA zero page: 2 bytes, 3 cycles
+    code.emplace_back(H3);
     code_duration += 3;
 
     // insert the code to the memory
     auto [data, program_end] = assemble(code);
 
     // initialize the arguments
-    data[L1] = 0x75;
-    data[L2] = 0x93;
-    data[H1] = 0x03;
-    data[H2] = 0x34;
+    data[L1] = mtl::u8(0x75);
+    data[L2] = mtl::u8(0x93);
+    data[H1] = mtl::u8(0x03);
+    data[H2] = mtl::u8(0x34);
 
     // execute the program
     CPU cpu(std::chrono::nanoseconds(0), Memory(data));
@@ -290,38 +290,38 @@ TEST_F(Program, DecimalSubtract) {
     constexpr uint8_t ADDR_SECOND = 0x01;
     constexpr uint8_t ADDR_RESULT = 0x02;
 
-    std::vector<uint8_t> code;
+    std::vector<mtl::u8> code;
     size_t code_duration = 0;
 
     // SED
-    code.push_back(0xF8); // 1 byte, 2 cycles
+    code.emplace_back(0xF8); // 1 byte, 2 cycles
     code_duration += 2;
 
     // SEC
-    code.push_back(0x38); // 1 byte, 2 cycles
+    code.emplace_back(0x38); // 1 byte, 2 cycles
     code_duration += 2;
 
     // LDA ADDR_FIRST
-    code.push_back(0xA5); // LDA zero page: 2 bytes, 3 cycles
-    code.push_back(ADDR_FIRST);
+    code.emplace_back(0xA5); // LDA zero page: 2 bytes, 3 cycles
+    code.emplace_back(ADDR_FIRST);
     code_duration += 3;
 
     // SBC ADDR_SECOND
-    code.push_back(0xE5); // SBC zero page: 2 bytes, 3 cycles
-    code.push_back(ADDR_SECOND);
+    code.emplace_back(0xE5); // SBC zero page: 2 bytes, 3 cycles
+    code.emplace_back(ADDR_SECOND);
     code_duration += 3;
 
     // STA ADDR_RESULT
-    code.push_back(0x85); // STA zero page: 2 bytes, 3 cycles
-    code.push_back(ADDR_RESULT);
+    code.emplace_back(0x85); // STA zero page: 2 bytes, 3 cycles
+    code.emplace_back(ADDR_RESULT);
     code_duration += 3;
 
     // insert the code to the memory
     auto [data, program_end] = assemble(code);
 
     // initialize the arguments
-    data[ADDR_FIRST]  = 0x44;
-    data[ADDR_SECOND] = 0x29;
+    data[ADDR_FIRST]  = mtl::u8(0x44);
+    data[ADDR_SECOND] = mtl::u8(0x29);
 
     // execute the program
     CPU cpu(std::chrono::nanoseconds(0), Memory(data));
@@ -348,22 +348,22 @@ TEST_F(Program, DecimalSubtract) {
 TEST_F(Program, And) {
     constexpr uint8_t ADDR_RESULT = 0x00;
 
-    std::vector<uint8_t> code;
+    std::vector<mtl::u8> code;
     size_t code_duration = 0;
 
     // LDA #1100X111; X is 0 or 1
-    code.push_back(0xA9); // LDA immediate: 2 bytes, 2 cycles
-    code.push_back(0b11001111);
+    code.emplace_back(0xA9); // LDA immediate: 2 bytes, 2 cycles
+    code.emplace_back(0b11001111);
     code_duration += 2;
 
     // AND #11110111
-    code.push_back(0x29); // AND immediate: 2 bytes, 2 cycles
-    code.push_back(0b11110111);
+    code.emplace_back(0x29); // AND immediate: 2 bytes, 2 cycles
+    code.emplace_back(0b11110111);
     code_duration += 2;
 
     // STA ADDR_RESULT
-    code.push_back(0x85); // STA zero page: 2 bytes, 3 cycles
-    code.push_back(ADDR_RESULT);
+    code.emplace_back(0x85); // STA zero page: 2 bytes, 3 cycles
+    code.emplace_back(ADDR_RESULT);
     code_duration += 3;
 
     // insert the code to the memory
@@ -394,22 +394,22 @@ TEST_F(Program, And) {
 TEST_F(Program, Or) {
     constexpr uint8_t ADDR_RESULT = 0x00;
 
-    std::vector<uint8_t> code;
+    std::vector<mtl::u8> code;
     size_t code_duration = 0;
 
     // LDA #1100X111; X is 0 or 1
-    code.push_back(0xA9); // LDA immediate: 2 bytes, 2 cycles
-    code.push_back(0b11100111);
+    code.emplace_back(0xA9); // LDA immediate: 2 bytes, 2 cycles
+    code.emplace_back(0b11100111);
     code_duration += 2;
 
     // ORA #00001000
-    code.push_back(0x09); // ORA immediate: 2 bytes, 2 cycles
-    code.push_back(0b00001000);
+    code.emplace_back(0x09); // ORA immediate: 2 bytes, 2 cycles
+    code.emplace_back(0b00001000);
     code_duration += 2;
 
     // STA ADDR_RESULT
-    code.push_back(0x85); // STA zero page: 2 bytes, 3 cycles
-    code.push_back(ADDR_RESULT);
+    code.emplace_back(0x85); // STA zero page: 2 bytes, 3 cycles
+    code.emplace_back(ADDR_RESULT);
     code_duration += 3;
 
     // insert the code to the memory
@@ -440,22 +440,22 @@ TEST_F(Program, Or) {
 TEST_F(Program, Xor) {
     constexpr uint8_t ADDR_RESULT = 0x00;
 
-    std::vector<uint8_t> code;
+    std::vector<mtl::u8> code;
     size_t code_duration = 0;
 
     // LDA #10101111
-    code.push_back(0xA9); // LDA immediate: 2 bytes, 2 cycles
-    code.push_back(0b10101111);
+    code.emplace_back(0xA9); // LDA immediate: 2 bytes, 2 cycles
+    code.emplace_back(0b10101111);
     code_duration += 2;
 
     // EOR #11111111
-    code.push_back(0x49); // EOR immediate: 2 bytes, 2 cycles
-    code.push_back(0b11111111);
+    code.emplace_back(0x49); // EOR immediate: 2 bytes, 2 cycles
+    code.emplace_back(0b11111111);
     code_duration += 2;
 
     // STA ADDR_RESULT
-    code.push_back(0x85); // STA zero page: 2 bytes, 3 cycles
-    code.push_back(ADDR_RESULT);
+    code.emplace_back(0x85); // STA zero page: 2 bytes, 3 cycles
+    code.emplace_back(ADDR_RESULT);
     code_duration += 3;
 
     // insert the code to the memory

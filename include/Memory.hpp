@@ -4,6 +4,7 @@
 
 #ifndef EMULATOR_MOS_6502_MEMORY_HPP
 #define EMULATOR_MOS_6502_MEMORY_HPP
+#include "mtl/core.hpp"
 #include <array>
 #include <cstdint>
 #include <limits>
@@ -34,7 +35,7 @@ public:
     /**
      * @brief Underlying container storing the data
      */
-    using Data = std::array<uint8_t, static_cast<size_t>(std::numeric_limits<uint16_t>::max()) + 1>;
+    using Data = std::array<mtl::u8, static_cast<size_t>(std::numeric_limits<uint16_t>::max()) + 1>;
 
     /**
      * @brief Initialize from existing data with minimal partitioning
@@ -105,7 +106,7 @@ public:
     /**
      * @brief Read a value at a given address
      */
-    [[nodiscard]] uint8_t operator[](uint16_t address) const noexcept;
+    [[nodiscard]] mtl::u8 operator[](uint16_t address) const noexcept;
 
     /**
      * @brief Write a value to a given address.
@@ -115,7 +116,7 @@ public:
      * @retval true If the write operation succeeded.
      * @retval false If and only if the address lies within the ROM.
      */
-    bool write(uint16_t address, uint8_t value) noexcept;
+    bool write(uint16_t address, mtl::u8 value) noexcept;
 
 private:
     [[nodiscard]] bool within_rom(uint16_t address) const noexcept;

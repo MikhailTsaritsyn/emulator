@@ -71,9 +71,15 @@ struct StatusRegister {
 
     [[nodiscard]] constexpr explicit operator uint8_t() noexcept { return *std::bit_cast<uint8_t *>(this); }
 
+    [[nodiscard]] constexpr explicit operator mtl::u8() noexcept { return *std::bit_cast<mtl::u8 *>(this); }
+
     constexpr StatusRegister &operator=(const uint8_t value) noexcept {
         *std::bit_cast<uint8_t *>(this) = value;
         return *this;
+    }
+
+    constexpr StatusRegister &operator=(const mtl::u8 value) noexcept {
+        return *this = value.to_underlying();
     }
 };
 } // namespace emulator::mos_6502

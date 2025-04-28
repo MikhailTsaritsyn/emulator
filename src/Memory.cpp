@@ -18,9 +18,9 @@ Memory Memory::Commodore64(const Data &data) noexcept { return { data, { 0xA000,
 Memory Memory::AppleII(const Data &data) noexcept { return { data, {0xC000} };
 }
 
-uint8_t Memory::operator[](const uint16_t address) const noexcept { return _data[address]; }
+mtl::u8 Memory::operator[](const uint16_t address) const noexcept { return _data[address]; }
 
-bool Memory::write(const uint16_t address, const uint8_t value) noexcept {
+bool Memory::write(const uint16_t address, const mtl::u8 value) noexcept {
     if (within_rom(address)) return false;
     _data[address] = value;
     return true;

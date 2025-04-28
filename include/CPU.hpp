@@ -112,7 +112,7 @@ private:
 
     [[nodiscard]] uint16_t fetch_absolute_address() noexcept;
 
-    [[nodiscard]] uint16_t fetch_absolute_address(uint8_t index) noexcept;
+    [[nodiscard]] uint16_t fetch_absolute_address(mtl::u8 index) noexcept;
 
     [[nodiscard]] uint16_t fetch_indirect_address() noexcept;
 
@@ -122,9 +122,9 @@ private:
 
     [[nodiscard]] uint16_t fetch_zero_page_address() noexcept;
 
-    [[nodiscard]] uint16_t fetch_zero_page_address(uint8_t index) noexcept;
+    [[nodiscard]] uint16_t fetch_zero_page_address(mtl::u8 index) noexcept;
 
-    [[nodiscard]] bool decode_and_execute(uint8_t opcode);
+    [[nodiscard]] bool decode_and_execute(mtl::u8 opcode);
 
     /**
      * @brief Read a byte from a specified address of the memory
@@ -133,13 +133,13 @@ private:
      *
      * @post Increments the cycle count.
      */
-    uint8_t read(uint16_t address) noexcept;
+    mtl::u8 read(uint16_t address) noexcept;
 
     [[nodiscard]] uint16_t branch(bool condition) noexcept;
 
-    static void compare(uint8_t a, uint8_t b, StatusRegister &sr) noexcept;
+    static void compare(mtl::u8 a, mtl::u8 b, StatusRegister &sr) noexcept;
 
-    void push(uint8_t byte) noexcept;
+    void push(mtl::u8 byte) noexcept;
 
     void interrupt(uint16_t handler_address) noexcept;
 
@@ -150,10 +150,10 @@ private:
      * It always spends an extra cycle to add carry to the high byte of the address.
      */
     void shift_or_rotate(Addressing addressing,
-                         uint8_t (*operation)(uint8_t, StatusRegister &),
+                         mtl::u8 (*operation)(mtl::u8, StatusRegister &),
                          Instruction instruction) noexcept;
 
-    uint16_t fetch_absolute_address_long(uint8_t index) noexcept;
+    uint16_t fetch_absolute_address_long(mtl::u8 index) noexcept;
 
     /**
      * @brief Program counter
@@ -174,7 +174,7 @@ private:
      * Thus, its name, as results accumulate in this register.
      * Most arithmetic and logical operations interact with this register.
      */
-    uint8_t AC = 0;
+    mtl::u8 AC{ 0 };
 
     /**
      * @brief Index register X
@@ -189,7 +189,7 @@ private:
      * which is known as the effective address.
      * This is commonly used for loops and table lookups at a given index, hence the name.
      */
-    uint8_t X = 0;
+    mtl::u8 X{ 0 };
 
     /**
      * @brief Index register Y
@@ -204,7 +204,7 @@ private:
      * which is known as the effective address.
      * This is commonly used for loops and table lookups at a given index, hence the name.
      */
-    uint8_t Y = 0;
+    mtl::u8 Y{ 0 };
 
     /**
      * @brief Stack pointer
@@ -215,7 +215,7 @@ private:
      * As an 8-bit register, the stack pointer holds just the low-byte of this address (the offset from $0100.)
      * Be aware that this just wraps around in case that the stack underflows.
      */
-    uint8_t SP = 0;
+    mtl::u8 SP{ 0 };
 
     /**
      * @brief Status register

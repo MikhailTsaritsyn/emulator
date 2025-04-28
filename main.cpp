@@ -5,7 +5,7 @@
 
 void emulate(const std::chrono::nanoseconds clock_period, const std::chrono::nanoseconds time) {
     emulator::mos_6502::Memory::Data data{};
-    std::ranges::fill(data, 0);
+    std::ranges::fill(data, mtl::u8{ 0 });
     emulator::mos_6502::CPU cpu{ clock_period, emulator::mos_6502::Memory{ data } }; // executes as fast as it can
 
     std::jthread thread{ [&cpu] { cpu.start(); } };
