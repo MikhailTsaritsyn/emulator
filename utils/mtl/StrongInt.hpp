@@ -17,6 +17,10 @@
 // TODO: strong float and double
 // TODO: div and mod like in Python?
 // TODO: an option to remove the sign bit in right shift
+// TODO: an option to wrap instead of panicking? Given as an argument to the function
+// TODO: explicit casts to built-in types?
+// TODO: inc() is modifying and wrapping, and next() is (free function?) and panicking?
+//       Same for dec() and prev().
 
 // TODO: fixed point
 
@@ -208,7 +212,17 @@ public:
      */
     friend constexpr std::optional<StrongInt> inc(StrongInt sting) noexcept {
         if (sting._value == std::numeric_limits<T>::max()) return std::nullopt;
-        return StrongInt{ static_cast<T>(sting._value + 1) };
+        return StrongInt{ static_cast<T>(sting._value + T{ 1 }) };
+    }
+
+    /**
+     * @brief Give the incremented value
+     *
+     * Wraps on overflow.
+     */
+    [[nodiscard]] constexpr StrongInt next() const noexcept {
+        if (_value == std::numeric_limits<T>::max()) return StrongInt(0);
+        return StrongInt{ static_cast<T>(_value + T{ 1 }) };
     }
 
     /**
@@ -251,6 +265,16 @@ public:
     friend constexpr std::optional<StrongInt> dec(StrongInt sting) noexcept {
         if (sting._value == std::numeric_limits<T>::min()) return std::nullopt;
         return StrongInt{ static_cast<T>(sting._value - 1) };
+    }
+
+    /**
+     * @brief Give the decremented value
+     *
+     * Wraps on overflow.
+     */
+    [[nodiscard]] constexpr StrongInt prev() const noexcept {
+        if (_value == 0) return StrongInt(std::numeric_limits<T>::max());
+        return StrongInt{ static_cast<T>(_value - T{ 1 }) };
     }
 
     /**
