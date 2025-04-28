@@ -81,11 +81,11 @@ std::string to_string(const Instruction instruction) noexcept {
     return std::format("{:d}", std::to_underlying(instruction));
 }
 
-mtl::u8 low_byte(const uint16_t word) noexcept { return mtl::u8(static_cast<uint8_t>(word & 0x00ff)); }
+mtl::u8 low_byte(const mtl::u16 word) noexcept { return (word & mtl::u16(0x00ff)).unsafe_cast<uint8_t>(); }
 
-mtl::u8 high_byte(const uint16_t word) noexcept { return mtl::u8(static_cast<uint8_t>(word >> 8)); }
+mtl::u8 high_byte(const mtl::u16 word) noexcept { return (word >> 8).unsafe_cast<uint8_t>(); }
 
-uint16_t make_word(const mtl::u8 high, const mtl::u8 low) noexcept {
-    return (mtl::u16(high) << 8 | mtl::u16(low)).to_underlying();
+mtl::u16 make_word(const mtl::u8 high, const mtl::u8 low) noexcept {
+    return mtl::u16(high) << 8 | mtl::u16(low);
 }
 } // namespace emulator::mos_6502

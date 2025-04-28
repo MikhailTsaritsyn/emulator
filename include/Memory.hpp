@@ -6,7 +6,6 @@
 #define EMULATOR_MOS_6502_MEMORY_HPP
 #include "mtl/core.hpp"
 #include <array>
-#include <cstdint>
 #include <limits>
 #include <unordered_set>
 
@@ -59,7 +58,7 @@ public:
      * The second mask is even simpler.
      * In binary, it is 0b1111111111111100, so any smaller address does not have enough initial ones.
      */
-    Memory(const Data &data, std::unordered_set<uint16_t> rom_masks) noexcept;
+    Memory(const Data &data, std::unordered_set<mtl::u16> rom_masks) noexcept;
 
     /**
      * @brief Partitioning preset for Commodore64 machines.
@@ -106,7 +105,7 @@ public:
     /**
      * @brief Read a value at a given address
      */
-    [[nodiscard]] mtl::u8 operator[](uint16_t address) const noexcept;
+    [[nodiscard]] mtl::u8 operator[](mtl::u16 address) const noexcept;
 
     /**
      * @brief Write a value to a given address.
@@ -116,14 +115,15 @@ public:
      * @retval true If the write operation succeeded.
      * @retval false If and only if the address lies within the ROM.
      */
-    bool write(uint16_t address, mtl::u8 value) noexcept;
+    bool write(mtl::u16 address, mtl::u8 value) noexcept;
 
 private:
-    [[nodiscard]] bool within_rom(uint16_t address) const noexcept;
+    [[nodiscard]] bool within_rom(mtl::u16 address) const noexcept;
 
     Data _data; ///< Encapsulated data
 
-    std::unordered_set<uint16_t> _rom_masks = { 0xFFFA, 0xFFFC }; ///< Masks defining read-only addresses
+    /// Masks defining read-only addresses
+    std::unordered_set<mtl::u16> _rom_masks = { mtl::u16(0xFFFA), mtl::u16(0xFFFC) };
 };
 
 } // namespace emulator::mos_6502

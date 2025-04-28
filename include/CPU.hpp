@@ -18,17 +18,17 @@ public:
     /**
      * @brief Non-Maskable Interrupt vector
      */
-    static constexpr uint16_t NMI = 0xFFFA;
+    static constexpr mtl::u16 NMI{ 0xFFFA };
 
     /**
      * @brief Reset vector
      */
-    static constexpr uint16_t RES = 0xFFFC;
+    static constexpr mtl::u16 RES{ 0xFFFC };
 
     /**
      * @brief Interrupt Request vector
      */
-    static constexpr uint16_t IRQ = 0xFFFE;
+    static constexpr mtl::u16 IRQ{ 0xFFFE };
 
     explicit CPU(std::chrono::nanoseconds clock_period, Memory memory) noexcept;
 
@@ -66,7 +66,7 @@ public:
      */
     [[nodiscard]] Memory &&memory() && noexcept;
 
-    [[nodiscard]] uint16_t program_counter() const noexcept;
+    [[nodiscard]] mtl::u16 program_counter() const noexcept;
 
     [[nodiscard]] size_t cycle() const noexcept;
 
@@ -96,7 +96,7 @@ private:
      */
     // TODO: specialize reading addresses
     // TODO: specialize writing addresses
-    using Address = std::variant<accumulator_t, implicit_t, immediate_t, relative_t, uint16_t>;
+    using Address = std::variant<accumulator_t, implicit_t, immediate_t, relative_t, mtl::u16>;
 
     /**
      * @brief Wait for the next clock tick and increment the cycle counter
@@ -110,19 +110,19 @@ private:
      */
     [[nodiscard]] Address fetch_address(Addressing addressing) noexcept;
 
-    [[nodiscard]] uint16_t fetch_absolute_address() noexcept;
+    [[nodiscard]] mtl::u16 fetch_absolute_address() noexcept;
 
-    [[nodiscard]] uint16_t fetch_absolute_address(mtl::u8 index) noexcept;
+    [[nodiscard]] mtl::u16 fetch_absolute_address(mtl::u8 index) noexcept;
 
-    [[nodiscard]] uint16_t fetch_indirect_address() noexcept;
+    [[nodiscard]] mtl::u16 fetch_indirect_address() noexcept;
 
-    [[nodiscard]] uint16_t fetch_indexed_indirect_address() noexcept;
+    [[nodiscard]] mtl::u16 fetch_indexed_indirect_address() noexcept;
 
-    [[nodiscard]] uint16_t fetch_indirect_indexed_address() noexcept;
+    [[nodiscard]] mtl::u16 fetch_indirect_indexed_address() noexcept;
 
-    [[nodiscard]] uint16_t fetch_zero_page_address() noexcept;
+    [[nodiscard]] mtl::u16 fetch_zero_page_address() noexcept;
 
-    [[nodiscard]] uint16_t fetch_zero_page_address(mtl::u8 index) noexcept;
+    [[nodiscard]] mtl::u16 fetch_zero_page_address(mtl::u8 index) noexcept;
 
     [[nodiscard]] bool decode_and_execute(mtl::u8 opcode);
 
@@ -133,15 +133,15 @@ private:
      *
      * @post Increments the cycle count.
      */
-    mtl::u8 read(uint16_t address) noexcept;
+    mtl::u8 read(mtl::u16 address) noexcept;
 
-    [[nodiscard]] uint16_t branch(bool condition) noexcept;
+    [[nodiscard]] mtl::u16 branch(bool condition) noexcept;
 
     static void compare(mtl::u8 a, mtl::u8 b, StatusRegister &sr) noexcept;
 
     void push(mtl::u8 byte) noexcept;
 
-    void interrupt(uint16_t handler_address) noexcept;
+    void interrupt(mtl::u16 handler_address) noexcept;
 
     void return_from_interrupt() noexcept;
 
@@ -153,7 +153,7 @@ private:
                          mtl::u8 (*operation)(mtl::u8, StatusRegister &),
                          Instruction instruction) noexcept;
 
-    uint16_t fetch_absolute_address_long(mtl::u8 index) noexcept;
+    mtl::u16 fetch_absolute_address_long(mtl::u8 index) noexcept;
 
     /**
      * @brief Program counter
@@ -163,7 +163,7 @@ private:
      * As it must be able to address the full 16-bit address range of 64K bytes, it's the only 16-bit register of the
      * 6502.
      */
-    uint16_t PC;
+    mtl::u16 PC;
 
     /**
      * @brief Accumulator

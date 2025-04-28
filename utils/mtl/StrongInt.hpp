@@ -684,4 +684,8 @@ template <std::integral T> struct std::formatter<mtl::StrongInt<T>> : std::forma
     }
 };
 
+template <std::integral T> struct std::hash<mtl::StrongInt<T>> {
+    auto operator()(mtl::StrongInt<T> sting) const noexcept { return std::hash<T>{}(sting.to_underlying()); }
+};
+
 #endif //EMULATOR_STRONG_TYPES_HPP
