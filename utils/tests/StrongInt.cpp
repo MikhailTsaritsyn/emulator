@@ -92,6 +92,15 @@ TEST(StrongInt, Comparison) {
     EXPECT_EQ(i16(0), i16(0));
 }
 
+TEST(StrongInt, ComparisonToUnderlying) {
+    EXPECT_EQ(u16(100), 100);
+    EXPECT_NE(u8(100), 356);
+    EXPECT_NE(u16(100), 356);
+
+    constexpr int a = 356;
+    EXPECT_NE(u8(100), a);
+}
+
 TEST(StrongInt, Addition) {
     EXPECT_EQ(u16(150) + u16(230), u16(380));
 

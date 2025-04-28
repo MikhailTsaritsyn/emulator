@@ -12,8 +12,6 @@
 #include <ostream>
 #include <utility>
 
-// TODO: comparison between different types? (with unsafe_cast'ing)
-// TODO: comparison to built-in types?
 // TODO: strong float and double
 // TODO: div and mod like in Python?
 // TODO: an option to remove the sign bit in right shift
@@ -21,6 +19,7 @@
 // TODO: explicit casts to built-in types?
 // TODO: inc() is modifying and wrapping, and next() is (free function?) and panicking?
 //       Same for dec() and prev().
+// TODO: inter-type arithmetics?
 
 // TODO: fixed point
 
@@ -317,6 +316,10 @@ private:
     friend constexpr auto operator<=>(StrongInt lhs, StrongInt rhs) noexcept { return lhs._value <=> rhs._value; }
 
     friend constexpr bool operator==(StrongInt lhs, StrongInt rhs) noexcept = default;
+
+    template <std::integral U> friend constexpr bool operator==(StrongInt lhs, U rhs) noexcept {
+        return lhs == StrongInt<U>(rhs);
+    }
 
     /**
      * @brief Add two integers
@@ -659,6 +662,20 @@ private:
 
     T _value = 0;
 };
+
+template <std::integral U, std::integral V>
+    requires(!std::is_same_v<U, V>)
+constexpr bool operator==(StrongInt<U> lhs, StrongInt<V> rhs) noexcept {
+    if constexpr (std::is_signed_v<U> && std::is_unsigned_v<V>) {
+        if (lhs.to_underlying() < 0) return false;
+        return lhs.template unsafe_cast<std::make_unsigned_t<U>>() == rhs;
+    } else if constexpr (std::is_unsigned_v<U> && std::is_signed_v<V>) {
+        return rhs == lhs;
+    } else {
+        if constexpr (sizeof(U) > sizeof(V)) return lhs == StrongInt<U>(rhs);
+        else return StrongInt<V>(lhs) == rhs;
+    }
+}
 } // namespace mtl
 
 template <std::integral T> struct std::formatter<mtl::StrongInt<T>> : std::formatter<T> {
