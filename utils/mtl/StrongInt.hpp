@@ -22,6 +22,7 @@
 // TODO: inter-type arithmetics?
 
 // TODO: fixed point
+// TODO: use std::cmp_less, std::cmp_equal and so on
 
 namespace mtl {
 /**
