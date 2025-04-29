@@ -142,9 +142,9 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
     switch (*instruction) {
     case Instruction::LDA: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
-            std::tie(AC, SR.negative, SR.zero) = value_with_flags(read(PC++));
+            std::tie(AC, SR.zero, SR.negative) = value_with_flags(read(PC++));
         else if (std::holds_alternative<mtl::u16>(address))
-            std::tie(AC, SR.negative, SR.zero) = value_with_flags(read(std::get<mtl::u16>(address)));
+            std::tie(AC, SR.zero, SR.negative) = value_with_flags(read(std::get<mtl::u16>(address)));
         else mtl::panic("Unsupported addressing mode for LDA");
     } break;
 
@@ -160,13 +160,13 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
             mtl::u8 result;
             if (SR.decimal) std::tie(result, SR.carry, SR.overflow) = ALU::add_decimal(AC, read(PC++), SR.carry);
             else std::tie(result, SR.carry, SR.overflow) = ALU::add_binary(AC, read(PC++), SR.carry);
-            std::tie(AC, SR.negative, SR.zero)      = value_with_flags(result);
+            std::tie(AC, SR.zero, SR.negative) = value_with_flags(result);
         } else if (std::holds_alternative<mtl::u16>(address)) {
             const auto memory = read(std::get<mtl::u16>(address));
             mtl::u8 result;
             if (SR.decimal) std::tie(result, SR.carry, SR.overflow) = ALU::add_decimal(AC, memory, SR.carry);
             else std::tie(result, SR.carry, SR.overflow) = ALU::add_binary(AC, memory, SR.carry);
-            std::tie(AC, SR.negative, SR.zero)      = value_with_flags(result);
+            std::tie(AC, SR.zero, SR.negative) = value_with_flags(result);
         } else mtl::panic("Unsupported addressing mode for ADC");
     } break;
 
@@ -176,41 +176,41 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
             if (SR.decimal)
                 std::tie(result, SR.carry, SR.overflow) = ALU::subtract_decimal(AC, read(PC++), SR.carry);
             else std::tie(result, SR.carry, SR.overflow) = ALU::subtract_binary(AC, read(PC++), SR.carry);
-            std::tie(AC, SR.negative, SR.zero) = value_with_flags(result);
+            std::tie(AC, SR.zero, SR.negative) = value_with_flags(result);
         } else if (std::holds_alternative<mtl::u16>(address)) {
             const auto memory = read(std::get<mtl::u16>(address));
             mtl::u8 result;
             if (SR.decimal)
                 std::tie(result, SR.carry, SR.overflow) = ALU::subtract_decimal(AC, memory, SR.carry);
             else std::tie(result, SR.carry, SR.overflow) = ALU::subtract_binary(AC, memory, SR.carry);
-            std::tie(AC, SR.negative, SR.zero) = value_with_flags(result);
+            std::tie(AC, SR.zero, SR.negative) = value_with_flags(result);
         } else mtl::panic("Unsupported addressing mode for SBC");
     } break;
 
     case Instruction::AND: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
-            std::tie(AC, SR.negative, SR.zero) = value_with_flags(AC & read(PC++));
+            std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC & read(PC++));
         } else if (std::holds_alternative<mtl::u16>(address)) {
             const auto arg = read(std::get<mtl::u16>(address));
-            std::tie(AC, SR.negative, SR.zero) = value_with_flags(AC & arg);
+            std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC & arg);
         } else mtl::panic("Unsupported addressing mode for AND");
     } break;
 
     case Instruction::ORA: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
-            std::tie(AC, SR.negative, SR.zero) = value_with_flags(AC | read(PC++));
+            std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC | read(PC++));
         } else if (std::holds_alternative<mtl::u16>(address)) {
             const auto arg = read(std::get<mtl::u16>(address));
-            std::tie(AC, SR.negative, SR.zero) = value_with_flags(AC | arg);
+            std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC | arg);
         } else mtl::panic("Unsupported addressing mode for ORA");
     } break;
 
     case Instruction::EOR: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
-            std::tie(AC, SR.negative, SR.zero) = value_with_flags(AC ^ read(PC++));
+            std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC ^ read(PC++));
         } else if (std::holds_alternative<mtl::u16>(address)) {
             const auto arg = read(std::get<mtl::u16>(address));
-            std::tie(AC, SR.negative, SR.zero) = value_with_flags(AC ^ arg);
+            std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC ^ arg);
         } else mtl::panic("Unsupported addressing mode for EOR");
     } break;
 
@@ -292,17 +292,17 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
 
     case Instruction::LDX: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
-            std::tie(X, SR.negative, SR.zero) = value_with_flags(read(PC++));
+            std::tie(X, SR.zero, SR.negative) = value_with_flags(read(PC++));
         else if (std::holds_alternative<mtl::u16>(address))
-            std::tie(X, SR.negative, SR.zero) = value_with_flags(read(std::get<mtl::u16>(address)));
+            std::tie(X, SR.zero, SR.negative) = value_with_flags(read(std::get<mtl::u16>(address)));
         else mtl::panic("Unsupported addressing mode for LDX");
     } break;
 
     case Instruction::LDY: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
-            std::tie(X, SR.negative, SR.zero) = value_with_flags(read(PC++));
+            std::tie(X, SR.zero, SR.negative) = value_with_flags(read(PC++));
         else if (std::holds_alternative<mtl::u16>(address))
-            std::tie(X, SR.negative, SR.zero) = value_with_flags(read(std::get<mtl::u16>(address)));
+            std::tie(X, SR.zero, SR.negative) = value_with_flags(read(std::get<mtl::u16>(address)));
         else mtl::panic("Unsupported addressing mode for LDY");
     } break;
 
@@ -320,22 +320,22 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
 
     case Instruction::INX: {
         wait_for_pulse();
-        std::tie(X, SR.negative, SR.zero) = value_with_flags(X.next());
+        std::tie(X, SR.zero, SR.negative) = value_with_flags(X.next());
     } break;
 
     case Instruction::INY: {
         wait_for_pulse();
-        std::tie(X, SR.negative, SR.zero) = value_with_flags(Y.next());
+        std::tie(X, SR.zero, SR.negative) = value_with_flags(Y.next());
     } break;
 
     case Instruction::DEX: {
         wait_for_pulse();
-        std::tie(X, SR.negative, SR.zero) = value_with_flags(X.prev());
+        std::tie(X, SR.zero, SR.negative) = value_with_flags(X.prev());
     } break;
 
     case Instruction::DEY: {
         wait_for_pulse();
-        std::tie(X, SR.negative, SR.zero) = value_with_flags(Y.prev());
+        std::tie(X, SR.zero, SR.negative) = value_with_flags(Y.prev());
     } break;
 
     case Instruction::CPX: {
@@ -360,22 +360,22 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
 
     case Instruction::TAX: {
         wait_for_pulse();
-        std::tie(X, SR.negative, SR.zero) = value_with_flags(AC);
+        std::tie(X, SR.zero, SR.negative) = value_with_flags(AC);
     } break;
 
     case Instruction::TXA: {
         wait_for_pulse();
-        std::tie(AC, SR.negative, SR.zero) = value_with_flags(X);
+        std::tie(AC, SR.zero, SR.negative) = value_with_flags(X);
     } break;
 
     case Instruction::TAY: {
         wait_for_pulse();
-        std::tie(Y, SR.negative, SR.zero) = value_with_flags(AC);
+        std::tie(Y, SR.zero, SR.negative) = value_with_flags(AC);
     } break;
 
     case Instruction::TYA: {
         wait_for_pulse();
-        std::tie(AC, SR.negative, SR.zero) = value_with_flags(Y);
+        std::tie(AC, SR.zero, SR.negative) = value_with_flags(Y);
     } break;
 
     case Instruction::JSR: {
@@ -410,7 +410,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
         read(PC); // the data is discarded
         wait_for_pulse();
         SP++;
-        std::tie(AC, SR.negative, SR.zero) = value_with_flags(read(make_word(mtl::u8(0x01), SP)));
+        std::tie(AC, SR.zero, SR.negative) = value_with_flags(read(make_word(mtl::u8(0x01), SP)));
     } break;
 
     case Instruction::TXS: {
@@ -420,7 +420,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
 
     case Instruction::TSX: {
         wait_for_pulse();
-        std::tie(X, SR.negative, SR.zero) = value_with_flags(SP);
+        std::tie(X, SR.zero, SR.negative) = value_with_flags(SP);
     } break;
 
     case Instruction::PHP: {
