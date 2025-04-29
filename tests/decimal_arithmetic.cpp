@@ -23,7 +23,7 @@ struct DecimalAddition : DecimalArithmetic {
 };
 
 TEST_P(DecimalAddition, Test) {
-    const auto [sum, carry, overflow] = ALU::add(input_first, input_second, input_carry, true);
+    const auto [sum, carry, overflow] = ALU::add_decimal(input_first, input_second, input_carry);
     EXPECT_EQ(sum, output);
 
     const auto result_raw = static_cast<int>(input_first.to_underlying()) + static_cast<int>(input_second.to_underlying()) + (input_carry ? 1 : 0);
@@ -74,7 +74,7 @@ struct DecimalSubtraction : DecimalArithmetic {
 };
 
 TEST_P(DecimalSubtraction, Test) {
-    const auto [sum, carry, overflow] = ALU::subtract(input_first, input_second, !input_borrow, true);
+    const auto [sum, carry, overflow] = ALU::subtract_decimal(input_first, input_second, !input_borrow);
     EXPECT_EQ(sum, output);
 
     const auto result_raw = static_cast<int>(input_first.to_underlying()) - static_cast<int>(input_second.to_underlying()) - (input_borrow ? 1 : 0);

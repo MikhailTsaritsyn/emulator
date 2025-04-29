@@ -158,12 +158,14 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
     case Instruction::ADC: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
             mtl::u8 result;
-            std::tie(result, SR.carry, SR.overflow) = ALU::add(AC, read(PC++), SR.carry, SR.decimal);
+            if (SR.decimal) std::tie(result, SR.carry, SR.overflow) = ALU::add_decimal(AC, read(PC++), SR.carry);
+            else std::tie(result, SR.carry, SR.overflow) = ALU::add_binary(AC, read(PC++), SR.carry);
             std::tie(AC, SR.negative, SR.zero)      = value_with_flags(result);
         } else if (std::holds_alternative<mtl::u16>(address)) {
             const auto memory = read(std::get<mtl::u16>(address));
             mtl::u8 result;
-            std::tie(result, SR.carry, SR.overflow) = ALU::add(AC, memory, SR.carry, SR.decimal);
+            if (SR.decimal) std::tie(result, SR.carry, SR.overflow) = ALU::add_decimal(AC, memory, SR.carry);
+            else std::tie(result, SR.carry, SR.overflow) = ALU::add_binary(AC, memory, SR.carry);
             std::tie(AC, SR.negative, SR.zero)      = value_with_flags(result);
         } else mtl::panic("Unsupported addressing mode for ADC");
     } break;
@@ -171,13 +173,17 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
     case Instruction::SBC: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
             mtl::u8 result;
-            std::tie(result, SR.carry, SR.overflow) = ALU::subtract(AC, read(PC++), SR.carry, SR.decimal);
-            std::tie(AC, SR.negative, SR.zero)      = value_with_flags(result);
+            if (SR.decimal)
+                std::tie(result, SR.carry, SR.overflow) = ALU::subtract_decimal(AC, read(PC++), SR.carry);
+            else std::tie(result, SR.carry, SR.overflow) = ALU::subtract_binary(AC, read(PC++), SR.carry);
+            std::tie(AC, SR.negative, SR.zero) = value_with_flags(result);
         } else if (std::holds_alternative<mtl::u16>(address)) {
             const auto memory = read(std::get<mtl::u16>(address));
             mtl::u8 result;
-            std::tie(result, SR.carry, SR.overflow) = ALU::subtract(AC, memory, SR.carry, SR.decimal);
-            std::tie(AC, SR.negative, SR.zero)      = value_with_flags(result);
+            if (SR.decimal)
+                std::tie(result, SR.carry, SR.overflow) = ALU::subtract_decimal(AC, memory, SR.carry);
+            else std::tie(result, SR.carry, SR.overflow) = ALU::subtract_binary(AC, memory, SR.carry);
+            std::tie(AC, SR.negative, SR.zero) = value_with_flags(result);
         } else mtl::panic("Unsupported addressing mode for SBC");
     } break;
 

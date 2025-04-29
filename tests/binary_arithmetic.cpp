@@ -22,7 +22,7 @@ struct BinaryAddition : BinaryArithmetic {
 };
 
 TEST_P(BinaryAddition, Test) {
-    const auto [sum, carry, overflow] = ALU::add(input_first, input_second, input_carry, false);
+    const auto [sum, carry, overflow] = ALU::add_binary(input_first, input_second, input_carry);
     EXPECT_EQ(sum, output);
 
     const auto result_raw = static_cast<int>(input_first.to_underlying()) + static_cast<int>(input_second.to_underlying()) + (input_carry ? 1 : 0);
@@ -79,7 +79,7 @@ struct BinarySubtraction : BinaryArithmetic {
 };
 
 TEST_P(BinarySubtraction, Test) {
-    const auto [sum, carry, overflow] = ALU::subtract(input_first, input_second, !input_borrow, false);
+    const auto [sum, carry, overflow] = ALU::subtract_binary(input_first, input_second, !input_borrow);
     EXPECT_EQ(sum, output);
 
     const auto result_raw = static_cast<int>(input_first.to_underlying()) - static_cast<int>(input_second.to_underlying()) - (input_borrow ? 1 : 0);
