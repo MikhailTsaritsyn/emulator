@@ -7,10 +7,16 @@
 #include "panic.hpp"
 #include <concepts>
 #include <cstdint>
-#include <expected>
 #include <format>
 #include <ostream>
 #include <utility>
+
+// For some reason, Clang does not support expected, though it is implemented fine
+// This trick enables it
+#ifdef Clang
+    #define __cpp_concepts 202002L
+#endif
+#include <expected>
 
 // TODO: strong float and double
 // TODO: div and mod like in Python?
@@ -33,7 +39,7 @@ namespace mtl {
  */
 template <typename U, typename T>
 concept Contains = std::is_integral_v<T> && std::is_integral_v<U> && sizeof(U) > sizeof(T)
-                   && (std::is_signed_v<U> || std::is_unsigned_v<T> && std::is_unsigned_v<U>);
+                   && (std::is_signed_v<U> || (std::is_unsigned_v<T> && std::is_unsigned_v<U>));
 
 template <std::integral T> class StrongInt {
 public:
@@ -185,7 +191,7 @@ public:
      */
     template <std::integral U>
         requires(!Contains<U, T> && !Contains<T, U> && !std::is_same_v<T, U>)
-    constexpr StrongInt<U> unsafe_cast() const noexcept(false) {
+    [[nodiscard]] constexpr StrongInt<U> unsafe_cast() const noexcept(false) {
         if constexpr (std::is_signed_v<T> && std::is_unsigned_v<U>) {
             static_assert(sizeof(T) <= sizeof(U), "another overload must have been chosen");
 

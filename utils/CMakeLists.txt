@@ -16,6 +16,17 @@ target_sources(emulator_utils
     src/panic.cpp
 )
 
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    message(STATUS "gcc compiler detected")
+    target_compile_definitions(emulator_utils PUBLIC GCC)
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    message(STATUS "clang compiler detected")
+    target_compile_definitions(emulator_utils PUBLIC Clang)
+    target_compile_options(emulator_utils PUBLIC -Wno-error=builtin-macro-redefined)
+else ()
+    message(FATAL_ERROR "Unsupported compiler")
+endif ()
+
 # Specify compiler options
 target_compile_options(emulator_utils PRIVATE -Werror)
 target_compile_features(emulator_utils PUBLIC cxx_std_23)
