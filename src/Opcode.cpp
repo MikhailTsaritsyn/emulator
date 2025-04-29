@@ -7,16 +7,16 @@
 #include <utility>
 
 namespace emulator::mos_6502 {
-std::optional<Addressing> getAddressing(const uint8_t opcode) noexcept {
-    const uint8_t a = (opcode & 0xE0) >> 5;
-    const uint8_t b = (opcode & 0x1C) >> 2;
-    const uint8_t c = opcode & 0x03;
+std::optional<Addressing> getAddressing(const mtl::u8 opcode) noexcept {
+    const auto a = (opcode & mtl::u8(0xE0)) >> 5;
+    const auto b = (opcode & mtl::u8(0x1C)) >> 2;
+    const auto c = opcode & mtl::u8(0x03);
 
-    switch (b) {
+    switch (b.to_underlying()) {
     case 0:
-        switch (c) {
+        switch (c.to_underlying()) {
         case 0:
-            switch (a) {
+            switch (a.to_underlying()) {
             case 0: return Addressing::Implicit;
             case 1: return Addressing::Absolute;
             case 2: return Addressing::Implicit;
@@ -31,23 +31,23 @@ std::optional<Addressing> getAddressing(const uint8_t opcode) noexcept {
         default: return std::nullopt;
         }
     case 1:
-        switch (c) {
+        switch (c.to_underlying()) {
         case 0: return a == 0 || a == 2 || a == 3 ? std::nullopt : std::make_optional(Addressing::ZeroPage);
         case 1: return Addressing::ZeroPage;
         case 2: return Addressing::ZeroPage;
         default: return std::nullopt;
         }
     case 2:
-        switch (c) {
+        switch (c.to_underlying()) {
         case 0: return Addressing::Implicit;
         case 1: return a == 4 ? std::nullopt : std::make_optional(Addressing::Immediate);
-        case 2: return a < 4 ? Addressing::Accumulator : Addressing::Implicit;
+        case 2: return a < mtl::u8(4) ? Addressing::Accumulator : Addressing::Implicit;
         default: return std::nullopt;
         }
     case 3:
-        switch (c) {
+        switch (c.to_underlying()) {
         case 0:
-            switch (a) {
+            switch (a.to_underlying()) {
             case 0: return std::nullopt;
             case 3: return Addressing::Indirect;
             default: return Addressing::Absolute;
@@ -57,31 +57,31 @@ std::optional<Addressing> getAddressing(const uint8_t opcode) noexcept {
         default: return std::nullopt;
         }
     case 4:
-        switch (c) {
+        switch (c.to_underlying()) {
         case 0: return Addressing::Relative;
         case 1: return Addressing::IndirectIndexed;
         default: return std::nullopt;
         }
     case 5:
-        switch (c) {
+        switch (c.to_underlying()) {
         case 0: return a == 4 || a == 5 ? std::make_optional(Addressing::ZeroPageX) : std::nullopt;
         case 1: return Addressing::ZeroPageX;
         case 2: return a == 4 || a == 5 ? Addressing::ZeroPageY : Addressing::ZeroPageX;
         default: return std::nullopt;
         }
     case 6:
-        switch (c) {
+        switch (c.to_underlying()) {
         case 0: return Addressing::Implicit;
         case 1: return Addressing::AbsoluteY;
         case 2: return a == 4 || a == 5 ? std::make_optional(Addressing::Implicit) : std::nullopt;
         default: return std::nullopt;
         }
     case 7:
-        switch (c) {
+        switch (c.to_underlying()) {
         case 0: return a == 5 ? std::make_optional(Addressing::AbsoluteX) : std::nullopt;
         case 1: return Addressing::AbsoluteX;
         case 2:
-            switch (a) {
+            switch (a.to_underlying()) {
             case 4: return std::nullopt;
             case 5: return Addressing::AbsoluteY;
             default: return Addressing::AbsoluteX;
@@ -92,16 +92,16 @@ std::optional<Addressing> getAddressing(const uint8_t opcode) noexcept {
     }
 }
 
-std::optional<Instruction> getInstruction(const uint8_t opcode) noexcept {
-    const uint8_t a = (opcode & 0xE0) >> 5;
-    const uint8_t b = (opcode & 0x1C) >> 2;
-    const uint8_t c = opcode & 0x03;
+std::optional<Instruction> getInstruction(const mtl::u8 opcode) noexcept {
+    const auto a = (opcode & mtl::u8(0xE0)) >> 5;
+    const auto b = (opcode & mtl::u8(0x1C)) >> 2;
+    const auto c = opcode & mtl::u8(0x03);
 
-    switch (c) {
+    switch (c.to_underlying()) {
     case 0:
-        switch (a) {
+        switch (a.to_underlying()) {
         case 0:
-            switch (b) {
+            switch (b.to_underlying()) {
             case 0: return Instruction::BRK;
             case 2: return Instruction::PHP;
             case 4: return Instruction::BPL;
@@ -109,7 +109,7 @@ std::optional<Instruction> getInstruction(const uint8_t opcode) noexcept {
             default: return std::nullopt;
             }
         case 1:
-            switch (b) {
+            switch (b.to_underlying()) {
             case 0: return Instruction::JSR;
             case 1: return Instruction::BIT;
             case 2: return Instruction::PLP;
@@ -119,7 +119,7 @@ std::optional<Instruction> getInstruction(const uint8_t opcode) noexcept {
             default: return std::nullopt;
             }
         case 2:
-            switch (b) {
+            switch (b.to_underlying()) {
             case 0: return Instruction::RTI;
             case 2: return Instruction::PHA;
             case 3: return Instruction::JMP;
@@ -128,7 +128,7 @@ std::optional<Instruction> getInstruction(const uint8_t opcode) noexcept {
             default: return std::nullopt;
             }
         case 3:
-            switch (b) {
+            switch (b.to_underlying()) {
             case 0: return Instruction::RTS;
             case 2: return Instruction::PLA;
             case 3: return Instruction::JMP;
@@ -137,7 +137,7 @@ std::optional<Instruction> getInstruction(const uint8_t opcode) noexcept {
             default: return std::nullopt;
             }
         case 4:
-            switch (b) {
+            switch (b.to_underlying()) {
             case 1: return Instruction::STY;
             case 2: return Instruction::DEY;
             case 3: return Instruction::STY;
@@ -147,7 +147,7 @@ std::optional<Instruction> getInstruction(const uint8_t opcode) noexcept {
             default: return std::nullopt;
             }
         case 5:
-            switch (b) {
+            switch (b.to_underlying()) {
             case 0: return Instruction::LDY;
             case 1: return Instruction::LDY;
             case 2: return Instruction::TAY;
@@ -159,7 +159,7 @@ std::optional<Instruction> getInstruction(const uint8_t opcode) noexcept {
             default: std::unreachable();
             }
         case 6:
-            switch (b) {
+            switch (b.to_underlying()) {
             case 0: return Instruction::CPY;
             case 1: return Instruction::CPY;
             case 2: return Instruction::INY;
@@ -169,7 +169,7 @@ std::optional<Instruction> getInstruction(const uint8_t opcode) noexcept {
             default: return std::nullopt;
             }
         case 7:
-            switch (b) {
+            switch (b.to_underlying()) {
             case 0: return Instruction::CPX;
             case 1: return Instruction::CPX;
             case 2: return Instruction::INX;
@@ -181,7 +181,7 @@ std::optional<Instruction> getInstruction(const uint8_t opcode) noexcept {
         default: std::unreachable();
         }
     case 1:
-        switch (a) {
+        switch (a.to_underlying()) {
         case 0: return Instruction::ORA;
         case 1: return Instruction::AND;
         case 2: return Instruction::EOR;
@@ -193,7 +193,7 @@ std::optional<Instruction> getInstruction(const uint8_t opcode) noexcept {
         default: std::unreachable();
         }
     case 2:
-        switch (a) {
+        switch (a.to_underlying()) {
         case 0:
             if (b == 0 || b == 4 || b == 6) return std::nullopt;
             else return Instruction::ASL;
@@ -207,7 +207,7 @@ std::optional<Instruction> getInstruction(const uint8_t opcode) noexcept {
             if (b == 0 || b == 4 || b == 6) return std::nullopt;
             else return Instruction::ROR;
         case 4:
-            switch (b) {
+            switch (b.to_underlying()) {
             case 1: return Instruction::STX;
             case 2: return Instruction::TXA;
             case 3: return Instruction::STX;
@@ -216,7 +216,7 @@ std::optional<Instruction> getInstruction(const uint8_t opcode) noexcept {
             default: return std::nullopt;
             }
         case 5:
-            switch (b) {
+            switch (b.to_underlying()) {
             case 0: return Instruction::LDX;
             case 1: return Instruction::LDX;
             case 2: return Instruction::TAX;

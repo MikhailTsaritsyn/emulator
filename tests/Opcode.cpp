@@ -6,7 +6,7 @@
 #include <gtest/gtest.h>
 
 namespace emulator::mos_6502::test {
-using TestParameters = std::tuple<uint8_t, std::optional<Instruction>, std::optional<Addressing>>;
+using TestParameters = std::tuple<mtl::u8, std::optional<Instruction>, std::optional<Addressing>>;
 
 struct Opcode : ::testing::TestWithParam<TestParameters> {};
 

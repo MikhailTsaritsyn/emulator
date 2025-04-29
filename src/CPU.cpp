@@ -7,6 +7,7 @@
 #include "helpers.hpp"
 #include <chrono>
 #include <iostream>
+#include <mtl/panic.hpp>
 
 namespace emulator::mos_6502 {
 CPU::CPU(const std::chrono::nanoseconds clock_period, Memory memory) noexcept
@@ -26,7 +27,7 @@ void CPU::start() noexcept {
         [[maybe_unused]] const auto opcode = read(PC++);
 
         if (!decode_and_execute(opcode)) {
-            std::cerr << std::format("Encountered an illegal opcode {:#04x} at address {:#06x}", opcode, PC - 1)
+            std::cerr << std::format("Encountered an illegal opcode {:#04x} at address {:#06x}", opcode, PC.prev())
                       << std::endl;
             _terminate.test_and_set();
         }
@@ -51,7 +52,7 @@ const Memory &CPU::memory() const & noexcept { return _memory; }
 
 Memory &&CPU::memory() && noexcept { return std::move(_memory); }
 
-uint16_t CPU::program_counter() const noexcept { return PC; }
+mtl::u16 CPU::program_counter() const noexcept { return PC; }
 
 size_t CPU::cycle() const noexcept { return _cycle; }
 
@@ -79,23 +80,23 @@ CPU::Address CPU::fetch_address(const Addressing addressing) noexcept {
     std::unreachable();
 }
 
-uint16_t CPU::fetch_absolute_address() noexcept {
+mtl::u16 CPU::fetch_absolute_address() noexcept {
     const auto address_low  = read(PC++);
     const auto address_high = read(PC++);
     return make_word(address_high, address_low);
 }
 
-uint16_t CPU::fetch_absolute_address(const uint8_t index) noexcept {
+mtl::u16 CPU::fetch_absolute_address(const mtl::u8 index) noexcept {
     const auto bal                     = read(PC++);
     const auto bah                     = read(PC++);
     const auto [bal_updated, overflow] = add_with_overflow(bal, index);
     const auto address                 = make_word(bah, bal_updated);
     if (!overflow) return address;
     read(address);
-    return make_word(bah + 1, bal_updated);
+    return make_word(bah.next(), bal_updated);
 }
 
-uint16_t CPU::fetch_indirect_address() noexcept {
+mtl::u16 CPU::fetch_indirect_address() noexcept {
     const auto ial = read(PC++);
     const auto iah = read(PC++);
     PC             = make_word(iah, ial);
@@ -104,101 +105,101 @@ uint16_t CPU::fetch_indirect_address() noexcept {
     return make_word(adh, adl);
 }
 
-uint16_t CPU::fetch_indexed_indirect_address() noexcept {
+mtl::u16 CPU::fetch_indexed_indirect_address() noexcept {
     const auto bal = read(PC++);
-    read(bal);
-    const auto adl = read(make_word(0, bal + X));
-    const auto adh = read(make_word(0, static_cast<uint8_t>(bal + X + 1)));
+    read(mtl::u16(bal));
+    const auto adl = read(make_word(mtl::u8(0), bal + X));
+    const auto adh = read(make_word(mtl::u8(0), (bal + X).next()));
     return make_word(adh, adl);
 }
 
-uint16_t CPU::fetch_indirect_indexed_address() noexcept {
+mtl::u16 CPU::fetch_indirect_indexed_address() noexcept {
     const auto ial                     = read(PC++);
-    const auto bal                     = read(ial);
-    const auto bah                     = read(make_word(0, ial + 1));
+    const auto bal                     = read(mtl::u16(ial));
+    const auto bah                     = read(make_word(mtl::u8(0), ial.next()));
     const auto [bal_updated, overflow] = add_with_overflow(bal, Y);
     const auto address                 = make_word(bah, bal_updated);
     if (!overflow) return address;
     read(address);
-    return make_word(bah + 1, bal_updated);
+    return make_word(bah.next(), bal_updated);
 }
 
-uint16_t CPU::fetch_zero_page_address() noexcept { return read(PC++); }
+mtl::u16 CPU::fetch_zero_page_address() noexcept { return mtl::u16(read(PC++)); }
 
-uint16_t CPU::fetch_zero_page_address(const uint8_t index) noexcept {
+mtl::u16 CPU::fetch_zero_page_address(const mtl::u8 index) noexcept {
     const auto adl = read(PC++);
-    read(adl); // This data is ignored
-    return make_word(0, adl + index);
+    read(mtl::u16(adl)); // This data is ignored
+    return make_word(mtl::u8(0), adl + index);
 }
 
-bool CPU::decode_and_execute(const uint8_t opcode) {
+bool CPU::decode_and_execute(const mtl::u8 opcode) {
     const auto instruction = getInstruction(opcode);
     if (!instruction) return false;
 
     const auto addressing = getAddressing(opcode);
-    if (!addressing) panic("A valid opcode must contain both instruction and addressing");
+    if (!addressing) mtl::panic("A valid opcode must contain both instruction and addressing");
 
     switch (*instruction) {
     case Instruction::LDA: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
             AC = read(PC++);
-        else if (std::holds_alternative<uint16_t>(address)) AC = read(std::get<uint16_t>(address));
-        else panic("Unsupported addressing mode for LDA");
+        else if (std::holds_alternative<mtl::u16>(address)) AC = read(std::get<mtl::u16>(address));
+        else mtl::panic("Unsupported addressing mode for LDA");
 
         SR.zero     = AC == 0;
-        SR.negative = AC & 0x80;
+        SR.negative = (AC & mtl::u8(0x80)) != 0;
     } break;
 
     case Instruction::STA: {
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address)) {
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<mtl::u16>(address)) {
             wait_for_pulse();
-            _memory.write(std::get<uint16_t>(address), AC);
-        } else panic("Unsupported addressing mode for STA");
+            _memory.write(std::get<mtl::u16>(address), AC);
+        } else mtl::panic("Unsupported addressing mode for STA");
     } break;
 
     case Instruction::ADC: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
             AC = ALU::add(AC, read(PC++), SR);
-        } else if (std::holds_alternative<uint16_t>(address)) {
-            const auto arg = read(std::get<uint16_t>(address));
+        } else if (std::holds_alternative<mtl::u16>(address)) {
+            const auto arg = read(std::get<mtl::u16>(address));
             AC = ALU::add(AC, arg, SR);
-        } else panic("Unsupported addressing mode for ADC");
+        } else mtl::panic("Unsupported addressing mode for ADC");
     } break;
 
     case Instruction::SBC: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
             AC = ALU::subtract(AC, read(PC++), SR);
-        } else if (std::holds_alternative<uint16_t>(address)) {
-            const auto arg = read(std::get<uint16_t>(address));
+        } else if (std::holds_alternative<mtl::u16>(address)) {
+            const auto arg = read(std::get<mtl::u16>(address));
             AC = ALU::subtract(AC, arg, SR);
-        } else panic("Unsupported addressing mode for SBC");
+        } else mtl::panic("Unsupported addressing mode for SBC");
     } break;
 
     case Instruction::AND: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
             AC = ALU::logical_and(AC, read(PC++), SR);
-        } else if (std::holds_alternative<uint16_t>(address)) {
-            const auto arg = read(std::get<uint16_t>(address));
+        } else if (std::holds_alternative<mtl::u16>(address)) {
+            const auto arg = read(std::get<mtl::u16>(address));
             AC = ALU::logical_and(AC, arg, SR);
-        } else panic("Unsupported addressing mode for AND");
+        } else mtl::panic("Unsupported addressing mode for AND");
     } break;
 
     case Instruction::ORA: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
             AC = ALU::logical_or(AC, read(PC++), SR);
-        } else if (std::holds_alternative<uint16_t>(address)) {
-            const auto arg = read(std::get<uint16_t>(address));
+        } else if (std::holds_alternative<mtl::u16>(address)) {
+            const auto arg = read(std::get<mtl::u16>(address));
             AC = ALU::logical_or(AC, arg, SR);
-        } else panic("Unsupported addressing mode for ORA");
+        } else mtl::panic("Unsupported addressing mode for ORA");
     } break;
 
     case Instruction::EOR: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
             AC = ALU::logical_xor(AC, read(PC++), SR);
-        } else if (std::holds_alternative<uint16_t>(address)) {
-            const auto arg = read(std::get<uint16_t>(address));
+        } else if (std::holds_alternative<mtl::u16>(address)) {
+            const auto arg = read(std::get<mtl::u16>(address));
             AC = ALU::logical_xor(AC, arg, SR);
-        } else panic("Unsupported addressing mode for EOR");
+        } else mtl::panic("Unsupported addressing mode for EOR");
     } break;
 
     case Instruction::SEC: {
@@ -237,9 +238,9 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
     } break;
 
     case Instruction::JMP: {
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address))
-            PC = std::get<uint16_t>(address);
-        else panic("Unsupported addressing mode for JMP");
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<mtl::u16>(address))
+            PC = std::get<mtl::u16>(address);
+        else mtl::panic("Unsupported addressing mode for JMP");
     } break;
 
     case Instruction::BMI: PC = branch(SR.negative); break;
@@ -259,100 +260,100 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
     case Instruction::BVC: PC = branch(!SR.overflow); break;
 
     case Instruction::CMP: {
-        uint8_t memory;
+        mtl::u8 memory;
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
             memory = read(PC++);
-        else if (std::holds_alternative<uint16_t>(address)) memory = read(std::get<uint16_t>(address));
-        else panic("Unsupported addressing mode for CMP");
+        else if (std::holds_alternative<mtl::u16>(address)) memory = read(std::get<mtl::u16>(address));
+        else mtl::panic("Unsupported addressing mode for CMP");
 
         compare(AC, memory, SR);
     } break;
 
     case Instruction::BIT: {
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address)) {
-            const auto result = static_cast<uint8_t>(AC & read(std::get<uint16_t>(address)));
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<mtl::u16>(address)) {
+            const auto result = static_cast<uint8_t>(AC & read(std::get<mtl::u16>(address)));
             SR.negative       = result & 0x80;
             SR.overflow       = result & 0x40;
             SR.zero           = result == 0;
-        } else panic("Unsupported addressing mode for BIT");
+        } else mtl::panic("Unsupported addressing mode for BIT");
     } break;
 
     case Instruction::LDX: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
             X = read(PC++);
-        else if (std::holds_alternative<uint16_t>(address)) X = read(std::get<uint16_t>(address));
-        else panic("Unsupported addressing mode for LDX");
+        else if (std::holds_alternative<mtl::u16>(address)) X = read(std::get<mtl::u16>(address));
+        else mtl::panic("Unsupported addressing mode for LDX");
 
         SR.zero     = X == 0;
-        SR.negative = X & 0x80;
+        SR.negative = (X & mtl::u8(0x80)) != 0;
     } break;
 
     case Instruction::LDY: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
             Y = read(PC++);
-        else if (std::holds_alternative<uint16_t>(address)) Y = read(std::get<uint16_t>(address));
-        else panic("Unsupported addressing mode for LDY");
+        else if (std::holds_alternative<mtl::u16>(address)) Y = read(std::get<mtl::u16>(address));
+        else mtl::panic("Unsupported addressing mode for LDY");
 
         SR.zero     = Y == 0;
-        SR.negative = Y & 0x80;
+        SR.negative = (Y & mtl::u8(0x80)) != 0;
     } break;
 
     case Instruction::STX: {
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address))
-            _memory.write(std::get<uint16_t>(address), X);
-        else panic("Unsupported addressing mode for STX");
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<mtl::u16>(address))
+            _memory.write(std::get<mtl::u16>(address), X);
+        else mtl::panic("Unsupported addressing mode for STX");
     } break;
 
     case Instruction::STY: {
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address))
-            _memory.write(std::get<uint16_t>(address), Y);
-        else panic("Unsupported addressing mode for STY");
+        if (const auto address = fetch_address(*addressing); std::holds_alternative<mtl::u16>(address))
+            _memory.write(std::get<mtl::u16>(address), Y);
+        else mtl::panic("Unsupported addressing mode for STY");
     } break;
 
     case Instruction::INX: {
         wait_for_pulse();
         X++;
         SR.zero     = X == 0;
-        SR.negative = X & 0x80;
+        SR.negative = (X & mtl::u8(0x80)) != 0;
     } break;
 
     case Instruction::INY: {
         wait_for_pulse();
         Y++;
         SR.zero     = Y == 0;
-        SR.negative = Y & 0x80;
+        SR.negative = (Y & mtl::u8(0x80)) != 0;
     } break;
 
     case Instruction::DEX: {
         wait_for_pulse();
         X--;
         SR.zero     = X == 0;
-        SR.negative = X & 0x80;
+        SR.negative = (X & mtl::u8(0x80)) != 0;
     } break;
 
     case Instruction::DEY: {
         wait_for_pulse();
         Y--;
         SR.zero     = Y == 0;
-        SR.negative = Y & 0x80;
+        SR.negative = (Y & mtl::u8(0x80)) != 0;
     } break;
 
     case Instruction::CPX: {
-        uint8_t memory;
+        mtl::u8 memory;
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
             memory = read(PC++);
-        else if (std::holds_alternative<uint16_t>(address)) memory = read(std::get<uint16_t>(address));
-        else panic("Unsupported addressing mode for CPX");
+        else if (std::holds_alternative<mtl::u16>(address)) memory = read(std::get<mtl::u16>(address));
+        else mtl::panic("Unsupported addressing mode for CPX");
 
         compare(X, memory, SR);
     } break;
 
     case Instruction::CPY: {
-        uint8_t memory;
+        mtl::u8 memory;
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
             memory = read(PC++);
-        else if (std::holds_alternative<uint16_t>(address)) memory = read(std::get<uint16_t>(address));
-        else panic("Unsupported addressing mode for CPY");
+        else if (std::holds_alternative<mtl::u16>(address)) memory = read(std::get<mtl::u16>(address));
+        else mtl::panic("Unsupported addressing mode for CPY");
 
         compare(Y, memory, SR);
     } break;
@@ -361,28 +362,28 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         wait_for_pulse();
         X           = AC;
         SR.zero     = X == 0;
-        SR.negative = X & 0x80;
+        SR.negative = (X & mtl::u8(0x80)) != 0;
     } break;
 
     case Instruction::TXA: {
         wait_for_pulse();
         AC          = X;
         SR.zero     = AC == 0;
-        SR.negative = AC & 0x80;
+        SR.negative = (AC & mtl::u8(0x80)) != 0;
     } break;
 
     case Instruction::TAY: {
         wait_for_pulse();
         Y           = AC;
         SR.zero     = Y == 0;
-        SR.negative = Y & 0x80;
+        SR.negative = (Y & mtl::u8(0x80)) != 0;
     } break;
 
     case Instruction::TYA: {
         wait_for_pulse();
         AC          = Y;
         SR.zero     = AC == 0;
-        SR.negative = AC & 0x80;
+        SR.negative = (AC & mtl::u8(0x80)) != 0;
     } break;
 
     case Instruction::JSR: {
@@ -400,8 +401,8 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         read(PC++);
         wait_for_pulse();
         SP++;
-        const auto pcl = read(0x0100 & SP++);
-        const auto pch = read(0x0100 & SP);
+        const auto pcl = read(make_word(mtl::u8(0x01), SP++));
+        const auto pch = read(make_word(mtl::u8(0x01), SP));
         wait_for_pulse();
         PC = make_word(pch, pcl);
         PC++;
@@ -417,9 +418,9 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         read(PC); // the data is discarded
         wait_for_pulse();
         SP++;
-        AC          = read(0x0100 & SP);
+        AC          = read(make_word(mtl::u8(0x01), SP));
         SR.zero     = AC == 0;
-        SR.negative = AC & 0x80;
+        SR.negative = (AC & mtl::u8(0x80)) != 0;
     } break;
 
     case Instruction::TXS: {
@@ -431,26 +432,26 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
         wait_for_pulse();
         X           = SP;
         SR.zero     = X == 0;
-        SR.negative = X & 0x80;
+        SR.negative = (X & mtl::u8(0x80)) != 0;
     } break;
 
     case Instruction::PHP: {
         read(PC); // the data is discarded
         wait_for_pulse();
-        push(static_cast<uint8_t>(SR));
+        push(static_cast<mtl::u8>(SR));
     } break;
 
     case Instruction::PLP: {
         read(PC); // the data is discarded
         wait_for_pulse();
         SP++;
-        SR = read(0x0100 & SP);
+        SR = read(make_word(mtl::u8(0x01), SP));
     } break;
 
     case Instruction::BRK:
         if (!SR.interrupt_disable) {
             wait_for_pulse();
-            push(static_cast<uint8_t>(StatusRegister{ .break_ = true }));
+            push(static_cast<mtl::u8>(StatusRegister{ .break_ = true }));
             interrupt(IRQ);
         }
         break;
@@ -471,13 +472,13 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
             const auto memory  = read(address);
             wait_for_pulse();
             wait_for_pulse();
-            _memory.write(address, memory + 1);
-        } else if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address)) {
-            const auto memory = read(std::get<uint16_t>(address));
+            _memory.write(address, memory.next());
+        } else if (const auto address = fetch_address(*addressing); std::holds_alternative<mtl::u16>(address)) {
+            const auto memory = read(std::get<mtl::u16>(address));
             wait_for_pulse();
             wait_for_pulse();
-            _memory.write(std::get<uint16_t>(address), memory + 1);
-        } else panic("Unsupported addressing mode for INC");
+            _memory.write(std::get<mtl::u16>(address), memory.next());
+        } else mtl::panic("Unsupported addressing mode for INC");
     } break;
 
     case Instruction::DEC: {
@@ -486,18 +487,18 @@ bool CPU::decode_and_execute(const uint8_t opcode) {
             const auto memory  = read(address);
             wait_for_pulse();
             wait_for_pulse();
-            _memory.write(address, memory - 1);
-        } else if (const auto address = fetch_address(*addressing); std::holds_alternative<uint16_t>(address)) {
-            const auto memory = read(std::get<uint16_t>(address));
+            _memory.write(address, memory.prev());
+        } else if (const auto address = fetch_address(*addressing); std::holds_alternative<mtl::u16>(address)) {
+            const auto memory = read(std::get<mtl::u16>(address));
             wait_for_pulse();
             wait_for_pulse();
-            _memory.write(std::get<uint16_t>(address), memory - 1);
-        } else panic("Unsupported addressing mode for INC");
+            _memory.write(std::get<mtl::u16>(address), memory.prev());
+        } else mtl::panic("Unsupported addressing mode for INC");
     } break;
 
     case Instruction::NOP: wait_for_pulse(); break;
 
-    default: panic(std::format("Unhandled instruction {}", to_string(*instruction)));
+    default: mtl::panic(std::format("Unhandled instruction {}", to_string(*instruction)));
     }
 
     return true;
@@ -507,23 +508,23 @@ void CPU::reset() noexcept {
     SR.interrupt_disable = true;
     read(PC++);
     read(PC++);
-    SP = 0xFF;
-    read(0x0100 + SP);
-    read(0x0100 + SP - 1);
-    read(0x0100 + SP - 2);
+    SP = mtl::u8(0xFF);
+    read(make_word(mtl::u8(0x01), SP));
+    read(make_word(mtl::u8(0x01), SP - mtl::u8(1)));
+    read(make_word(mtl::u8(0x01), SP - mtl::u8(2)));
     const auto pcl = read(RES);
-    const auto pch = read(RES + 1);
+    const auto pch = read(RES.next());
     PC             = make_word(pch, pcl);
 }
 
-uint8_t CPU::read(const uint16_t address) noexcept {
+mtl::u8 CPU::read(mtl::u16 address) noexcept {
     wait_for_pulse();
     return _memory[address];
 }
 
-uint16_t CPU::branch(const bool condition) noexcept {
+mtl::u16 CPU::branch(const bool condition) noexcept {
     // Assume PC = 0x0101
-    const auto offset = std::bit_cast<int8_t>(read(PC++)); // assume -0x50
+    const auto offset = std::bit_cast<mtl::i8>(read(PC++)); // assume -0x50
     if (!condition) return PC;
 
     read(PC);                                                             // from PC = 0x0102, this data is ignored
@@ -542,26 +543,26 @@ uint16_t CPU::branch(const bool condition) noexcept {
     // Next operation reads an opcode from 0x00B2
 }
 
-void CPU::compare(const uint8_t a, const uint8_t b, StatusRegister &sr) noexcept {
-    sr.negative = static_cast<uint8_t>(static_cast<int>(a) - static_cast<int>(b)) & 0x80;
+void CPU::compare(const mtl::u8 a, const mtl::u8 b, StatusRegister &sr) noexcept {
+    sr.negative = (sub_with_overflow(a, b).first & mtl::u8(0x80)) != 0;
     sr.carry    = a >= b;
     sr.zero     = a == b;
 }
 
-void CPU::push(const uint8_t byte) noexcept {
-    if (!_memory.write(0x0100 & SP--, byte)) panic("Stack is read-only");
+void CPU::push(const mtl::u8 byte) noexcept {
+    if (!_memory.write(make_word(mtl::u8(0x01), SP--), byte)) mtl::panic("Stack is read-only");
 }
 
-void CPU::interrupt(const uint16_t handler_address) noexcept {
+void CPU::interrupt(mtl::u16 handler_address) noexcept {
     read(PC); // this data is discarded
     wait_for_pulse();
     push(high_byte(PC));
     wait_for_pulse();
     push(low_byte(PC));
     wait_for_pulse();
-    push(static_cast<uint8_t>(SR));
+    push(static_cast<mtl::u8>(SR));
     const auto pcl = read(handler_address);
-    const auto pch = read(handler_address + 1);
+    const auto pch = read(handler_address.next());
     PC             = make_word(pch, pcl);
 }
 
@@ -569,14 +570,14 @@ void CPU::return_from_interrupt() noexcept {
     read(PC++);
     wait_for_pulse();
     SP++;
-    SR             = read(0x0100 + SP++);
-    const auto pcl = read(0x0100 + SP++);
-    const auto pch = read(0x0100 + SP++);
+    SR             = read(make_word(mtl::u8(0x01), SP++));
+    const auto pcl = read(make_word(mtl::u8(0x01), SP++));
+    const auto pch = read(make_word(mtl::u8(0x01), SP++));
     PC             = make_word(pch, pcl);
 }
 
 void CPU::shift_or_rotate(const Addressing addressing,
-                          uint8_t (*operation)(uint8_t, StatusRegister &),
+                          mtl::u8 (*operation)(mtl::u8, StatusRegister &),
                           const Instruction instruction) noexcept {
     if (addressing == Addressing::AbsoluteX) {
         const auto address = fetch_absolute_address_long(X);
@@ -588,16 +589,16 @@ void CPU::shift_or_rotate(const Addressing addressing,
     } else if (const auto address = fetch_address(addressing); std::holds_alternative<accumulator_t>(address)) {
         wait_for_pulse();
         AC = operation(AC, SR);
-    } else if (std::holds_alternative<uint16_t>(address)) {
-        const auto memory = read(std::get<uint16_t>(address));
+    } else if (std::holds_alternative<mtl::u16>(address)) {
+        const auto memory = read(std::get<mtl::u16>(address));
         wait_for_pulse();
         const auto result = operation(memory, SR);
         wait_for_pulse();
-        _memory.write(std::get<uint16_t>(address), result);
-    } else panic("Unsupported addressing mode for " + to_string(instruction));
+        _memory.write(std::get<mtl::u16>(address), result);
+    } else mtl::panic("Unsupported addressing mode for " + to_string(instruction));
 }
 
-uint16_t CPU::fetch_absolute_address_long(const uint8_t index) noexcept {
+mtl::u16 CPU::fetch_absolute_address_long(const mtl::u8 index) noexcept {
     const auto adl           = read(PC++);
     const auto adh           = read(PC++);
     const auto [adlx, carry] = add_with_overflow(adl, index);
@@ -607,6 +608,6 @@ uint16_t CPU::fetch_absolute_address_long(const uint8_t index) noexcept {
     // to avoid writing a false memory location
     read(make_word(adh, adlx)); // this data is discarded
 
-    return make_word(adh + carry, adlx);
+    return make_word(carry ? adh.next() : adh, adlx);
 }
 } // namespace emulator::mos_6502

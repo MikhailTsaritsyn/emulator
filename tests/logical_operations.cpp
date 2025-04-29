@@ -5,14 +5,14 @@
 #include <gtest/gtest.h>
 
 namespace emulator::mos_6502::test {
-using TestParameters = std::tuple<uint8_t, uint8_t, uint8_t>;
+using TestParameters = std::tuple<mtl::u8, mtl::u8, mtl::u8>;
 
 struct LogicalOperations : testing::TestWithParam<TestParameters> {
     StatusRegister sr;
 
-    uint8_t input_first  = 0;
-    uint8_t input_second = 0;
-    uint8_t output       = 0;
+    mtl::u8 input_first{0};
+    mtl::u8 input_second{0};
+    mtl::u8 output{0};
 
     void SetUp() override {
         std::tie(input_first, input_second, output) = GetParam();
@@ -27,12 +27,12 @@ struct LogicalOperations : testing::TestWithParam<TestParameters> {
     }
 
     void TearDown() override {
-        EXPECT_EQ(sr.negative, static_cast<int8_t>(output) < 0) << "output = " << static_cast<int>(output);
+        EXPECT_EQ(sr.negative, std::bit_cast<mtl::i8>(output) < mtl::i8(0)) << "output = " << output;
         EXPECT_FALSE(sr.overflow);
         EXPECT_FALSE(sr.break_);
         EXPECT_FALSE(sr.decimal);
         EXPECT_FALSE(sr.interrupt_disable);
-        EXPECT_EQ(sr.zero, output == 0) << "output = " << static_cast<int>(output);
+        EXPECT_EQ(sr.zero, output == 0) << "output = " << output;
         EXPECT_FALSE(sr.carry);
     }
 };

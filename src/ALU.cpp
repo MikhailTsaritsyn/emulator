@@ -21,9 +21,9 @@ namespace internal {
  * For example, binary 0b01111001 represents a decimal 79, and a binary 0b00010100 represents a decimal 14.
  * Therefore, the function returns {7, 9} and {1, 4} correspondingly.
  */
-[[nodiscard]] constexpr std::pair<uint8_t, uint8_t> decode_decimal(const uint8_t binary) noexcept {
-    const uint8_t low_digit  = binary & 0x0f;
-    const uint8_t high_digit = (binary & 0xf0) >> 4;
+[[nodiscard]] constexpr std::pair<mtl::u8, mtl::u8> decode_decimal(const mtl::u8 binary) noexcept {
+    const auto low_digit  = binary & mtl::u8(0x0f);
+    const auto high_digit = (binary & mtl::u8(0xf0)) >> 4;
     return { high_digit, low_digit };
 }
 
@@ -32,9 +32,9 @@ namespace internal {
  *
  * @copydetails decode_decimal
  */
-[[nodiscard]] constexpr uint8_t encode_decimal(const uint8_t high_digit, const uint8_t low_digit) noexcept {
-    assert(high_digit <= 9);
-    assert(low_digit <= 9);
+[[nodiscard]] constexpr mtl::u8 encode_decimal(const mtl::u8 high_digit, const mtl::u8 low_digit) noexcept {
+    assert(high_digit <= mtl::u8(9));
+    assert(low_digit <= mtl::u8(9));
     return (high_digit << 4) | low_digit;
 }
 
@@ -47,12 +47,12 @@ namespace internal {
  *
  * @return The sum of two numbers modulo 10
  */
-[[nodiscard]] constexpr uint8_t add_decimal_digits(const uint8_t a, const uint8_t b, bool &carry) noexcept {
-    assert(a <= 9);
-    assert(b <= 9);
-    const auto result = a + b + carry;
-    carry             = result > 9;
-    return static_cast<uint8_t>(result % 10);
+[[nodiscard]] constexpr mtl::u8 add_decimal_digits(const mtl::u8 a, const mtl::u8 b, bool &carry) noexcept {
+    assert(a <= mtl::u8(9));
+    assert(b <= mtl::u8(9));
+    const auto result = a + b + (carry ? mtl::u8(1) : mtl::u8(0));
+    carry             = result > mtl::u8(9);
+    return result % mtl::u8(10);
 }
 
 /**
@@ -67,7 +67,7 @@ namespace internal {
  *
  * @return Binary-coded decimal result modulo 100
  */
-[[nodiscard]] constexpr uint8_t add_decimal(const uint8_t a, const uint8_t b, bool &carry) noexcept {
+[[nodiscard]] constexpr mtl::u8 add_decimal(const mtl::u8 a, const mtl::u8 b, bool &carry) noexcept {
     const auto [high_digit_a, low_digit_a] = decode_decimal(a);
     const auto [high_digit_b, low_digit_b] = decode_decimal(b);
 
@@ -89,10 +89,11 @@ namespace internal {
  *
  * @post If the result is greater than 255, it is wrapped around zero.
  */
-[[nodiscard]] constexpr uint8_t add_binary(const uint8_t a, const uint8_t b, bool &carry) noexcept {
-    const auto result = static_cast<uint16_t>(a) + static_cast<uint16_t>(b) + (carry ? uint16_t{ 1 } : uint16_t{ 0 });
-    carry = result > std::numeric_limits<uint8_t>::max();
-    return static_cast<uint8_t>(result);
+[[nodiscard]] constexpr mtl::u8 add_binary(const mtl::u8 a, const mtl::u8 b, bool &carry) noexcept {
+    const auto [tmp, overflow1]    = add_with_overflow(a, b);
+    const auto [result, overflow2] = add_with_overflow(tmp, carry ? mtl::u8(1) : mtl::u8(0));
+    carry                          = overflow1 || overflow2;
+    return result;
 }
 
 /**
@@ -105,10 +106,11 @@ namespace internal {
  *
  * @return Unsigned 8-bit result modulo 256
  */
-[[nodiscard]] constexpr uint8_t subtract_binary(const uint8_t a, const uint8_t b, bool &borrow) noexcept {
-    const auto result = static_cast<int>(a) - static_cast<int>(b) - (borrow ? 1 : 0);
-    borrow            = result < 0;
-    return static_cast<uint8_t>(result);
+[[nodiscard]] constexpr mtl::u8 subtract_binary(const mtl::u8 a, const mtl::u8 b, bool &borrow) noexcept {
+    const auto [tmp, overflow1]    = sub_with_overflow(a, b);
+    const auto [result, overflow2] = sub_with_overflow(tmp, borrow ? mtl::u8(1) : mtl::u8(0));
+    borrow                         = overflow1 || overflow2;
+    return result;
 }
 
 /**
@@ -121,13 +123,14 @@ namespace internal {
  *
  * @return The difference between two numbers modulo 10
  */
-[[nodiscard]] constexpr uint8_t subtract_decimal_digits(const uint8_t a, const uint8_t b, bool &borrow) noexcept {
-    assert(a <= 9);
-    assert(b <= 9);
-    const auto result = static_cast<int>(a) - static_cast<int>(b) - (borrow ? 1 : 0);
-    borrow            = result < 0;
+[[nodiscard]] constexpr mtl::u8 subtract_decimal_digits(const mtl::u8 a, const mtl::u8 b, bool &borrow) noexcept {
+    assert(a <= mtl::u8(9));
+    assert(b <= mtl::u8(9));
+    const auto result = std::bit_cast<mtl::i8>(a) - std::bit_cast<mtl::i8>(b) - (borrow ? mtl::i8(1) : mtl::i8(0));
+
+    borrow            = result < mtl::i8(0);
     // Not sure how C++'s modulo operation treats negative numbers, so it's made positive to be sure
-    return static_cast<uint8_t>((result + 10) % 10);
+    return ((result + mtl::i8(10)) % mtl::i8(10)).unsafe_cast<uint8_t>();
 }
 
 /**
@@ -142,7 +145,7 @@ namespace internal {
  *
  * @return Binary-coded decimal result modulo 100
  */
-[[nodiscard]] constexpr uint8_t subtract_decimal(const uint8_t a, const uint8_t b, bool &borrow) noexcept {
+[[nodiscard]] constexpr mtl::u8 subtract_decimal(const mtl::u8 a, const mtl::u8 b, bool &borrow) noexcept {
     const auto [high_digit_a, low_digit_a] = decode_decimal(a);
     const auto [high_digit_b, low_digit_b] = decode_decimal(b);
 
@@ -153,56 +156,56 @@ namespace internal {
 }
 } // namespace internal
 
-uint8_t add(const uint8_t a, const uint8_t b, StatusRegister &sr) noexcept {
+mtl::u8 add(const mtl::u8 a, const mtl::u8 b, StatusRegister &sr) noexcept {
     bool carry        = sr.carry; // bit-field sr.carry cannot be used as an in-out boolean
     const auto result = sr.decimal ? internal::add_decimal(a, b, carry) : internal::add_binary(a, b, carry);
 
     sr.carry    = carry;
-    sr.overflow = (result & 0x80) != (a & 0x80); // Compare the sign bits
-    sr.negative = result & 0x80;
+    sr.overflow = (result & mtl::u8(0x80)) != (a & mtl::u8(0x80)); // Compare the sign bits
+    sr.negative = (result & mtl::u8(0x80)) != 0;
     sr.zero     = result == 0;
 
     return result;
 }
 
-uint8_t subtract(const uint8_t a, const uint8_t b, StatusRegister &sr) noexcept {
+mtl::u8 subtract(const mtl::u8 a, const mtl::u8 b, StatusRegister &sr) noexcept {
     bool borrow       = !sr.carry;
     const auto result = sr.decimal ? internal::subtract_decimal(a, b, borrow) : internal::subtract_binary(a, b, borrow);
 
     sr.carry    = !borrow;
-    sr.overflow = (result & 0x80) != (a & 0x80); // Compare the sign bits
-    sr.negative = result & 0x80;
+    sr.overflow = (result & mtl::u8(0x80)) != (a & mtl::u8(0x80)); // Compare the sign bits
+    sr.negative = (result & mtl::u8(0x80)) != 0;
     sr.zero     = result == 0;
 
     return result;
 }
 
-uint8_t logical_and(const uint8_t a, const uint8_t b, StatusRegister &sr) noexcept {
+mtl::u8 logical_and(const mtl::u8 a, const mtl::u8 b, StatusRegister &sr) noexcept {
     const auto result = a & b;
 
-    sr.negative = result & 0x80;
+    sr.negative = (result & mtl::u8(0x80)) != 0;
     sr.zero     = result == 0;
-    return static_cast<uint8_t>(result);
+    return result;
 }
 
-uint8_t logical_or(const uint8_t a, const uint8_t b, StatusRegister &sr) noexcept {
+mtl::u8 logical_or(const mtl::u8 a, const mtl::u8 b, StatusRegister &sr) noexcept {
     const auto result = a | b;
 
-    sr.negative = result & 0x80;
+    sr.negative = (result & mtl::u8(0x80)) != 0;
     sr.zero     = result == 0;
-    return static_cast<uint8_t>(result);
+    return result;
 }
 
-uint8_t logical_xor(const uint8_t a, const uint8_t b, StatusRegister &sr) noexcept {
+mtl::u8 logical_xor(const mtl::u8 a, const mtl::u8 b, StatusRegister &sr) noexcept {
     const auto result = a ^ b;
 
-    sr.negative = result & 0x80;
+    sr.negative = (result & mtl::u8(0x80)) != 0;
     sr.zero     = result == 0;
-    return static_cast<uint8_t>(result);
+    return result;
 }
 
-uint8_t shift_right(uint8_t a, StatusRegister &sr) noexcept {
-    sr.carry = a & 1; // store the rightmost bit
+mtl::u8 shift_right(mtl::u8 a, StatusRegister &sr) noexcept {
+    sr.carry = (a & mtl::u8(1)) != 0; // store the rightmost bit
     a >>= 1;
 
     sr.negative = false;
@@ -210,33 +213,32 @@ uint8_t shift_right(uint8_t a, StatusRegister &sr) noexcept {
     return a;
 }
 
-uint8_t shift_left(uint8_t a, StatusRegister &sr) noexcept {
-    sr.carry = a & 0x80; // store the leftmost bit
-    a <<= 1;
+mtl::u8 shift_left(const mtl::u8 a, StatusRegister &sr) noexcept {
+    const auto [shifted, overflow] = shift_left(a, 1);
+    sr.carry                       = overflow;
 
-    sr.negative = a & 0x80;
-    sr.zero     = a == 0;
-    return a;
+    sr.negative = (shifted & mtl::u8(0x80)) != 0;
+    sr.zero     = shifted == 0;
+    return shifted;
 }
 
-uint8_t rotate_left(uint8_t a, StatusRegister &sr) noexcept {
-    const bool output_carry = a & 0x80; // store the leftmost bit
-    a <<= 1;
-    if (sr.carry) a |= 1; // set the rightmost bit
+mtl::u8 rotate_left(const mtl::u8 a, StatusRegister &sr) noexcept {
+    auto [shifted, overflow] = shift_left(a, 1);
+    if (sr.carry) shifted |= mtl::u8(1); // set the rightmost bit
 
-    sr.carry    = output_carry;
-    sr.negative = a & 0x80;
-    sr.zero     = a == 0;
-    return a;
+    sr.carry    = overflow;
+    sr.negative = (shifted & mtl::u8(0x80)) != 0;
+    sr.zero     = shifted == 0;
+    return shifted;
 }
 
-uint8_t rotate_right(uint8_t a, StatusRegister &sr) noexcept {
-    const bool output_carry = a & 1; // store the rightmost bit
+mtl::u8 rotate_right(mtl::u8 a, StatusRegister &sr) noexcept {
+    const bool output_carry = (a & mtl::u8(1)) != 0; // store the rightmost bit
     a >>= 1;
-    if (sr.carry) a |= 0x80; // set the leftmost bit
+    if (sr.carry) a |= mtl::u8(0x80); // set the leftmost bit
 
     sr.carry    = output_carry;
-    sr.negative = a & 0x80;
+    sr.negative = (a & mtl::u8(0x80)) != 0;
     sr.zero     = a == 0;
     return a;
 }

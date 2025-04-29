@@ -5,14 +5,14 @@
 #include <gtest/gtest.h>
 
 namespace emulator::mos_6502::test {
-using TestParameters = std::tuple<uint8_t, bool, uint8_t>;
+using TestParameters = std::tuple<mtl::u8, bool, mtl::u8>;
 
 struct BitManip : testing::TestWithParam<TestParameters> {
     StatusRegister sr;
 
-    uint8_t input    = 0;
+    mtl::u8 input{0};
     bool input_carry = false;
-    uint8_t output   = 0;
+    mtl::u8 output{0};
 
     void SetUp() override {
         std::tie(input, input_carry, output) = GetParam();
@@ -27,7 +27,7 @@ struct BitManip : testing::TestWithParam<TestParameters> {
     }
 
     void TearDown() override {
-        EXPECT_EQ(sr.negative, static_cast<int8_t>(output) < 0);
+        EXPECT_EQ(sr.negative, std::bit_cast<mtl::i8>(output) < mtl::i8(0));
         EXPECT_FALSE(sr.overflow);
         EXPECT_FALSE(sr.break_);
         EXPECT_FALSE(sr.decimal);
@@ -40,7 +40,7 @@ struct ShiftRight : BitManip {};
 
 TEST_P(ShiftRight, Test) {
     EXPECT_EQ(ALU::shift_right(input, sr), output);
-    EXPECT_EQ(sr.carry, input & 1);
+    EXPECT_EQ(sr.carry, (input & mtl::u8(1)) != 0);
 }
 
 INSTANTIATE_TEST_SUITE_P(Values,
@@ -59,7 +59,7 @@ struct ShiftLeft : BitManip {};
 
 TEST_P(ShiftLeft, Test) {
     EXPECT_EQ(ALU::shift_left(input, sr), output);
-    EXPECT_EQ(sr.carry, static_cast<bool>(input & 0x80));
+    EXPECT_EQ(sr.carry, (input & mtl::u8(0x80)) != 0);
 }
 
 INSTANTIATE_TEST_SUITE_P(Values,
@@ -78,7 +78,7 @@ struct RotateLeft : BitManip {};
 
 TEST_P(RotateLeft, Test) {
     EXPECT_EQ(ALU::rotate_left(input, sr), output);
-    EXPECT_EQ(sr.carry, static_cast<bool>(input & 0x80));
+    EXPECT_EQ(sr.carry, (input & mtl::u8(0x80)) != 0);
 }
 
 INSTANTIATE_TEST_SUITE_P(Values,
@@ -106,7 +106,7 @@ struct RotateRight : BitManip {};
 
 TEST_P(RotateRight, Test) {
     EXPECT_EQ(ALU::rotate_right(input, sr), output);
-    EXPECT_EQ(sr.carry, static_cast<bool>(input & 0x01));
+    EXPECT_EQ(sr.carry, (input & mtl::u8(0x01)) != 0);
 }
 
 INSTANTIATE_TEST_SUITE_P(Values,

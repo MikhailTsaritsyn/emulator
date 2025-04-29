@@ -4,6 +4,7 @@
 
 #ifndef EMULATOR_MOS_6502_OPCODE_HPP
 #define EMULATOR_MOS_6502_OPCODE_HPP
+#include "mtl/core.hpp"
 #include <cstdint>
 #include <optional>
 
@@ -485,7 +486,7 @@ enum class Instruction : uint8_t {
  *
  * @retval std::nullopt If and only if the opcode is illegal
  */
-[[nodiscard]] std::optional<Addressing> getAddressing(uint8_t opcode) noexcept;
+[[nodiscard]] std::optional<Addressing> getAddressing(mtl::u8 opcode) noexcept;
 
 /**
  * @brief Determine the instruction encoded in an opcode
@@ -494,7 +495,7 @@ enum class Instruction : uint8_t {
  *
  * @retval std::nullopt If and only if the opcode is illegal
  */
-[[nodiscard]] std::optional<Instruction> getInstruction(uint8_t opcode) noexcept;
+[[nodiscard]] std::optional<Instruction> getInstruction(mtl::u8 opcode) noexcept;
 } // namespace mos6502
 
 #endif //EMULATOR_MOS_6502_OPCODE_HPP

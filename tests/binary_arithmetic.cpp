@@ -5,19 +5,19 @@
 #include <gtest/gtest.h>
 
 namespace emulator::mos_6502::test {
-using TestParameters = std::tuple<uint8_t, uint8_t, bool, uint8_t>;
+using TestParameters = std::tuple<mtl::u8, mtl::u8, bool, mtl::u8>;
 
 struct BinaryArithmetic : testing::TestWithParam<TestParameters> {
     StatusRegister sr;
 
-    uint8_t input_first  = 0;
-    uint8_t input_second = 0;
-    uint8_t output       = 0;
+    mtl::u8 input_first{0};
+    mtl::u8 input_second{0};
+    mtl::u8 output{0};
 
     void TearDown() override {
-        EXPECT_EQ(sr.negative, static_cast<int8_t>(output) < 0) << "result = " << static_cast<int>(output);
-        EXPECT_EQ(sr.overflow, (static_cast<int8_t>(input_first) < 0) != (static_cast<int8_t>(output) < 0))
-                << static_cast<int>(input_first) << " -> " << static_cast<int>(output);
+        EXPECT_EQ(sr.negative, std::bit_cast<mtl::i8>(output) < mtl::i8(0)) << "result = " << output;
+        EXPECT_EQ(sr.overflow, (std::bit_cast<mtl::i8>(input_first) < mtl::i8(0)) != (std::bit_cast<mtl::i8>(output) < mtl::i8(0)))
+                << input_first << " -> " << output;
         EXPECT_FALSE(sr.break_);
         EXPECT_FALSE(sr.decimal);
         EXPECT_FALSE(sr.interrupt_disable);
@@ -44,8 +44,8 @@ struct BinaryAddition : BinaryArithmetic {
 TEST_P(BinaryAddition, Test) {
     EXPECT_EQ(ALU::add(input_first, input_second, sr), output);
 
-    const auto result_raw = static_cast<int>(input_first) + static_cast<int>(input_second) + (input_carry ? 1 : 0);
-    EXPECT_EQ(sr.carry, result_raw > 255) << "result = " << static_cast<int>(output) << '(' << result_raw << ')';
+    const auto result_raw = static_cast<int>(input_first.to_underlying()) + static_cast<int>(input_second.to_underlying()) + (input_carry ? 1 : 0);
+    EXPECT_EQ(sr.carry, result_raw > 255) << "result = " << output << '(' << result_raw << ')';
 }
 
 INSTANTIATE_TEST_SUITE_P(Zero,
@@ -105,8 +105,8 @@ struct BinarySubtraction : BinaryArithmetic {
 TEST_P(BinarySubtraction, Test) {
     EXPECT_EQ(ALU::subtract(input_first, input_second, sr), output);
 
-    const auto result_raw = static_cast<int>(input_first) - static_cast<int>(input_second) - (input_borrow ? 1 : 0);
-    EXPECT_EQ(sr.carry, result_raw >= 0) << "result = " << static_cast<int>(output) << '(' << result_raw << ')';
+    const auto result_raw = static_cast<int>(input_first.to_underlying()) - static_cast<int>(input_second.to_underlying()) - (input_borrow ? 1 : 0);
+    EXPECT_EQ(sr.carry, result_raw >= 0) << "result = " << output << '(' << result_raw << ')';
 }
 
 INSTANTIATE_TEST_SUITE_P(Zero,

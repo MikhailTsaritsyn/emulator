@@ -4,6 +4,7 @@
 
 #ifndef EMULATOR_MOS_6502_ALU_HPP
 #define EMULATOR_MOS_6502_ALU_HPP
+#include "mtl/core.hpp"
 #include "StatusRegister.hpp"
 #include <cstdint>
 
@@ -26,7 +27,7 @@ namespace emulator::mos_6502::ALU {
  *       - The negative flag is set if the result contains bit 7 on, otherwise it is reset.
  *       - The zero flag is set if the result is zero, otherwise it is reset.
  */
-[[nodiscard]] uint8_t add(uint8_t a, uint8_t b, StatusRegister &sr) noexcept;
+[[nodiscard]] mtl::u8 add(mtl::u8 a, mtl::u8 b, StatusRegister &sr) noexcept;
 
 /**
  * @brief Add two unsigned 8-bit integers with borrow
@@ -48,7 +49,7 @@ namespace emulator::mos_6502::ALU {
  *       - The negative flag is set if the result has bit 7 on, otherwise it is reset.
  *       - The zero flag is set if the result is zero, otherwise it is reset.
  */
-[[nodiscard]] uint8_t subtract(uint8_t a, uint8_t b, StatusRegister &sr) noexcept;
+[[nodiscard]] mtl::u8 subtract(mtl::u8 a, mtl::u8 b, StatusRegister &sr) noexcept;
 
 /**
  * @brief AND two unsigned 8-bit integers
@@ -67,21 +68,21 @@ namespace emulator::mos_6502::ALU {
  *       - The negative flag is set if the result has bit 7 on, otherwise it is reset.
  *       - The zero flag is set if the result is zero, otherwise it is reset.
  */
-[[nodiscard]] uint8_t logical_and(uint8_t a, uint8_t b, StatusRegister &sr) noexcept;
+[[nodiscard]] mtl::u8 logical_and(mtl::u8 a, mtl::u8 b, StatusRegister &sr) noexcept;
 
 /**
  * @brief OR two unsigned 8-bit integers
  *
  * @copydoc logical_and
  */
-[[nodiscard]] uint8_t logical_or(uint8_t a, uint8_t b, StatusRegister &sr) noexcept;
+[[nodiscard]] mtl::u8 logical_or(mtl::u8 a, mtl::u8 b, StatusRegister &sr) noexcept;
 
 /**
  * @brief XOR two unsigned 8-bit integers
  *
  * @copydoc logical_and
  */
-[[nodiscard]] uint8_t logical_xor(uint8_t a, uint8_t b, StatusRegister &sr) noexcept;
+[[nodiscard]] mtl::u8 logical_xor(mtl::u8 a, mtl::u8 b, StatusRegister &sr) noexcept;
 
 /**
  * @brief Shift an unsigned 8-bit integer right one bit
@@ -94,7 +95,7 @@ namespace emulator::mos_6502::ALU {
  *       - The negative flag is always reset.
  *       - The zero flag is set if the result is zero, otherwise it is reset.
  */
-[[nodiscard]] uint8_t shift_right(uint8_t a, StatusRegister &sr) noexcept;
+[[nodiscard]] mtl::u8 shift_right(mtl::u8 a, StatusRegister &sr) noexcept;
 
 /**
  * @brief Shift an unsigned 8-bit integer left one bit
@@ -107,7 +108,7 @@ namespace emulator::mos_6502::ALU {
  *       - The negative flag is set to result bit 7 (input bit 6).
  *       - The zero flag is set if the result of the shift is zero and reset otherwise.
  */
-[[nodiscard]] uint8_t shift_left(uint8_t a, StatusRegister &sr) noexcept;
+[[nodiscard]] mtl::u8 shift_left(mtl::u8 a, StatusRegister &sr) noexcept;
 
 /**
  * @brief Rotate an unsigned 8-bit integer left one bit
@@ -125,7 +126,7 @@ namespace emulator::mos_6502::ALU {
  *       - The negative flag is set equal to input bit 6.
  *       - The zero flag is set if the result is zero, otherwise it is reset.
  */
-[[nodiscard]] uint8_t rotate_left(uint8_t a, StatusRegister &sr) noexcept;
+[[nodiscard]] mtl::u8 rotate_left(mtl::u8 a, StatusRegister &sr) noexcept;
 
 /**
  * @brief Rotate an unsigned 8-bit integer right one bit
@@ -143,7 +144,7 @@ namespace emulator::mos_6502::ALU {
  *       - The negative flag is set equal to input carry.
  *       - The zero flag is set if the result is zero, otherwise it is reset.
  */
-[[nodiscard]] uint8_t rotate_right(uint8_t a, StatusRegister &sr) noexcept;
+[[nodiscard]] mtl::u8 rotate_right(mtl::u8 a, StatusRegister &sr) noexcept;
 } // namespace emulator::mos_6502::ALU
 
 #endif //EMULATOR_MOS_6502_ALU_HPP
