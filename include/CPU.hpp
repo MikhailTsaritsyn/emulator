@@ -156,6 +156,16 @@ private:
     mtl::u16 fetch_absolute_address_long(mtl::u8 index) noexcept;
 
     /**
+     * @param src The new value
+     *
+     * @return {value, zero, negative}
+     * @retval value The given value
+     * @retval zero Is set if the value is zero, otherwise it is reset.
+     * @retval negative Is set if the result has bit 7 on, otherwise it is reset.
+     */
+    static std::tuple<mtl::u8, bool, bool> value_with_flags(mtl::u8 src) noexcept;
+
+    /**
      * @brief Program counter
      *
      * The program counter keeps track of the memory location holding the current instruction code.

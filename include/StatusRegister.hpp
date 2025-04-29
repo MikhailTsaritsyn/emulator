@@ -4,8 +4,7 @@
 
 #ifndef EMULATOR_MOS_6502_STATUS_REGISTER_HPP
 #define EMULATOR_MOS_6502_STATUS_REGISTER_HPP
-#include <bit>
-#include <cstdint>
+#include "mtl/core.hpp"
 
 namespace emulator::mos_6502 {
 struct StatusRegister {
@@ -15,7 +14,7 @@ struct StatusRegister {
      * and as a result of any logical ALU operations.
      * The N flag is also updated by increment and decrement operations acting on a memory location.
      */
-    bool negative : 1 = false;
+    bool negative = false;
 
     /**
      * The overflow flag indicates overflow with signed binary arithmetics.
@@ -26,9 +25,9 @@ struct StatusRegister {
      * For example, both operands have a zero in the sign position at bit 7, but bit 7 of the result is 1,
      * or both operands have the sign-bit set, but the result is positive.
      */
-    bool overflow : 1 = false;
+    bool overflow = false;
 
-    bool expansion : 1 = false; ///< ignored
+    bool expansion = false; ///< ignored
 
     /**
      * The break flag (B) is not an actual flag implemented in a register,
@@ -43,17 +42,17 @@ struct StatusRegister {
      * Its purpose is more for patching, to discern an interrupt caused by a BRK instruction from a normal
      * interrupt initiated by hardware.
      */
-    bool break_ : 1 = false;
+    bool break_ = false;
 
     /**
      * The decimal flag sets the ALU to Binary Coded Decimal (BCD) mode for additions and subtractions (ADC, SBC).
      */
-    bool decimal : 1 = false;
+    bool decimal = false;
 
     /**
      * The interrupt-inhibit flag blocks any maskable interrupt requests (IRQ).
      */
-    bool interrupt_disable : 1 = false;
+    bool interrupt_disable = false;
 
     /**
      * The zero flag indicates a value of all zero bits.
@@ -61,26 +60,43 @@ struct StatusRegister {
      * and as a result of any logical ALU operations.
      * The Z flag is also updated by increment and decrement operations acting on a memory location.
      */
-    bool zero : 1 = false;
+    bool zero = false;
 
     /**
      * The carry flag is used as a buffer and as a borrow in arithmetic operations.
      * Any comparison updates this additionally to the Z and N flags, as do shift and rotate operations.
      */
-    bool carry : 1 = false;
+    bool carry = false;
 
-    [[nodiscard]] constexpr explicit operator uint8_t() noexcept { return *std::bit_cast<uint8_t *>(this); }
+    /**
+     * @brief Convert each flag to a corresponding bit of an 8-bit integer
+     *
+     * Flags go in the following order from the least significant bit:
+     * 0. negative
+     * 1. overflow
+     * 2. expansion
+     * 3. break_
+     * 4. decimal
+     * 5. interrupt_disable
+     * 6. zero
+     * 7. carry
+     */
+    [[nodiscard]] explicit operator mtl::u8() const noexcept;
 
-    [[nodiscard]] constexpr explicit operator mtl::u8() noexcept { return *std::bit_cast<mtl::u8 *>(this); }
-
-    constexpr StatusRegister &operator=(const uint8_t value) noexcept {
-        *std::bit_cast<uint8_t *>(this) = value;
-        return *this;
-    }
-
-    constexpr StatusRegister &operator=(const mtl::u8 value) noexcept {
-        return *this = value.to_underlying();
-    }
+    /**
+     * @brief Get the value of each flag from a corresponding bit of an 8-bit integer
+     *
+     * Flags go in the following order from the least significant bit:
+     * 0. negative
+     * 1. overflow
+     * 2. expansion
+     * 3. break_
+     * 4. decimal
+     * 5. interrupt_disable
+     * 6. zero
+     * 7. carry
+     */
+    StatusRegister &operator=(mtl::u8 value) noexcept;
 };
 } // namespace emulator::mos_6502
 

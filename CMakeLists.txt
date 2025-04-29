@@ -27,6 +27,7 @@ target_sources(emulator_core
     src/helpers.cpp
     src/Memory.cpp
     src/Opcode.cpp
+    src/StatusRegister.cpp
 )
 
 # Create the main executable
@@ -50,7 +51,6 @@ add_executable(emulator_test
     tests/bit_manipulations.cpp
     tests/binary_arithmetic.cpp
     tests/decimal_arithmetic.cpp
-    tests/logical_operations.cpp
     tests/programs.cpp
 )
 target_link_libraries(emulator_test PRIVATE emulator_core gtest gtest_main)

@@ -24,8 +24,6 @@ namespace emulator::mos_6502::ALU {
  *         or when the sum of a decimal addition exceeds 99, otherwise it is reset.
  *       - The overflow flag is set whe the sign or bit 7 differs from that of the first value
  *         due to result exceeding +127 or -128, otherwise it is reset.
- *       - The negative flag is set if the result contains bit 7 on, otherwise it is reset.
- *       - The zero flag is set if the result is zero, otherwise it is reset.
  */
 [[nodiscard]] mtl::u8 add(mtl::u8 a, mtl::u8 b, StatusRegister &sr) noexcept;
 
@@ -46,43 +44,8 @@ namespace emulator::mos_6502::ALU {
  *       - The carry flag is set if the result is greater than or equal to zero,
  *       otherwise it is reset indicating a borrow.
  *       - The overflow flag is set when the result exceeds +127 or -127, otherwise it is reset.
- *       - The negative flag is set if the result has bit 7 on, otherwise it is reset.
- *       - The zero flag is set if the result is zero, otherwise it is reset.
  */
 [[nodiscard]] mtl::u8 subtract(mtl::u8 a, mtl::u8 b, StatusRegister &sr) noexcept;
-
-/**
- * @brief AND two unsigned 8-bit integers
- *
- * @param[in] a The first number
- * @param[in] b The second number
- * @param[out] sr Does not affect the operation. Some of its flags are set when it's finished.
- *
- * This instruction affects the Status Register
- * - The zero flag is set if the result in the Accumulator is 0, otherwise it is reset.
- * - The negative flag is set if the result in the accumulator has bit 7 on, otherwise it is reset.
- *
- * @return Unsigned 8-bit result
- *
- * @post The status register is updated at the end of the operation.
- *       - The negative flag is set if the result has bit 7 on, otherwise it is reset.
- *       - The zero flag is set if the result is zero, otherwise it is reset.
- */
-[[nodiscard]] mtl::u8 logical_and(mtl::u8 a, mtl::u8 b, StatusRegister &sr) noexcept;
-
-/**
- * @brief OR two unsigned 8-bit integers
- *
- * @copydoc logical_and
- */
-[[nodiscard]] mtl::u8 logical_or(mtl::u8 a, mtl::u8 b, StatusRegister &sr) noexcept;
-
-/**
- * @brief XOR two unsigned 8-bit integers
- *
- * @copydoc logical_and
- */
-[[nodiscard]] mtl::u8 logical_xor(mtl::u8 a, mtl::u8 b, StatusRegister &sr) noexcept;
 
 /**
  * @brief Shift an unsigned 8-bit integer right one bit

@@ -162,8 +162,6 @@ mtl::u8 add(const mtl::u8 a, const mtl::u8 b, StatusRegister &sr) noexcept {
 
     sr.carry    = carry;
     sr.overflow = (result & mtl::u8(0x80)) != (a & mtl::u8(0x80)); // Compare the sign bits
-    sr.negative = (result & mtl::u8(0x80)) != 0;
-    sr.zero     = result == 0;
 
     return result;
 }
@@ -174,33 +172,7 @@ mtl::u8 subtract(const mtl::u8 a, const mtl::u8 b, StatusRegister &sr) noexcept 
 
     sr.carry    = !borrow;
     sr.overflow = (result & mtl::u8(0x80)) != (a & mtl::u8(0x80)); // Compare the sign bits
-    sr.negative = (result & mtl::u8(0x80)) != 0;
-    sr.zero     = result == 0;
 
-    return result;
-}
-
-mtl::u8 logical_and(const mtl::u8 a, const mtl::u8 b, StatusRegister &sr) noexcept {
-    const auto result = a & b;
-
-    sr.negative = (result & mtl::u8(0x80)) != 0;
-    sr.zero     = result == 0;
-    return result;
-}
-
-mtl::u8 logical_or(const mtl::u8 a, const mtl::u8 b, StatusRegister &sr) noexcept {
-    const auto result = a | b;
-
-    sr.negative = (result & mtl::u8(0x80)) != 0;
-    sr.zero     = result == 0;
-    return result;
-}
-
-mtl::u8 logical_xor(const mtl::u8 a, const mtl::u8 b, StatusRegister &sr) noexcept {
-    const auto result = a ^ b;
-
-    sr.negative = (result & mtl::u8(0x80)) != 0;
-    sr.zero     = result == 0;
     return result;
 }
 

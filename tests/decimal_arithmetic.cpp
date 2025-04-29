@@ -15,13 +15,13 @@ struct DecimalArithmetic : testing::TestWithParam<TestParameters> {
     mtl::u8 output{0};
 
     void TearDown() override {
-        EXPECT_EQ(sr.negative, std::bit_cast<mtl::i8>(output) < mtl::i8(0)) << "result = " << output;
+        EXPECT_FALSE(sr.negative);
         EXPECT_EQ(sr.overflow, (std::bit_cast<mtl::i8>(input_first) < mtl::i8(0)) != (std::bit_cast<mtl::i8>(output) < mtl::i8(0)))
                 << input_first << " -> " << output;
         EXPECT_FALSE(sr.break_);
         EXPECT_TRUE(sr.decimal);
         EXPECT_FALSE(sr.interrupt_disable);
-        EXPECT_EQ(sr.zero, output == 0);
+        EXPECT_FALSE(sr.zero);
     }
 };
 
