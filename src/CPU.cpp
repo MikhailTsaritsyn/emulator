@@ -446,13 +446,105 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
 
     case Instruction::RTI: return_from_interrupt(); break;
 
-    case Instruction::LSR: shift_or_rotate(*addressing, ALU::shift_right, Instruction::LSR); break;
+    case Instruction::LSR: {
+        if (*addressing == Addressing::AbsoluteX) {
+            const auto address = fetch_absolute_address_long(X);
+            const auto memory  = read(address);
+            wait_for_pulse();
+            mtl::u8 result;
+            std::tie(result, SR.carry) = ALU::shift_right(memory);
+            wait_for_pulse();
+            std::tie(result, SR.zero, SR.negative) = value_with_flags(result);
+            _memory.write(address, result);
+        } else if (const auto address = fetch_address(*addressing); std::holds_alternative<accumulator_t>(address)) {
+            wait_for_pulse();
+            std::tie(AC, SR.carry)             = ALU::shift_right(AC);
+            std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC);
+        } else if (std::holds_alternative<mtl::u16>(address)) {
+            const auto memory = read(std::get<mtl::u16>(address));
+            wait_for_pulse();
+            mtl::u8 result;
+            std::tie(result, SR.carry)             = ALU::shift_right(memory);
+            std::tie(result, SR.zero, SR.negative) = value_with_flags(result);
+            wait_for_pulse();
+            _memory.write(std::get<mtl::u16>(address), result);
+        } else mtl::panic("Unsupported addressing mode for LSR");
+    } break;
 
-    case Instruction::ASL: shift_or_rotate(*addressing, ALU::shift_left, Instruction::ASL); break;
+    case Instruction::ASL: {
+        if (*addressing == Addressing::AbsoluteX) {
+            const auto address = fetch_absolute_address_long(X);
+            const auto memory  = read(address);
+            wait_for_pulse();
+            mtl::u8 result;
+            std::tie(result, SR.carry) = shift_left(memory, 1);
+            wait_for_pulse();
+            std::tie(result, SR.zero, SR.negative) = value_with_flags(result);
+            _memory.write(address, result);
+        } else if (const auto address = fetch_address(*addressing); std::holds_alternative<accumulator_t>(address)) {
+            wait_for_pulse();
+            std::tie(AC, SR.carry)             = shift_left(AC, 1);
+            std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC);
+        } else if (std::holds_alternative<mtl::u16>(address)) {
+            const auto memory = read(std::get<mtl::u16>(address));
+            wait_for_pulse();
+            mtl::u8 result;
+            std::tie(result, SR.carry)             = shift_left(memory, 1);
+            std::tie(result, SR.zero, SR.negative) = value_with_flags(result);
+            wait_for_pulse();
+            _memory.write(std::get<mtl::u16>(address), result);
+        } else mtl::panic("Unsupported addressing mode for ASL");
+    } break;
 
-    case Instruction::ROL: shift_or_rotate(*addressing, ALU::rotate_left, Instruction::ROL); break;
+    case Instruction::ROL: {
+        if (*addressing == Addressing::AbsoluteX) {
+            const auto address = fetch_absolute_address_long(X);
+            const auto memory  = read(address);
+            wait_for_pulse();
+            mtl::u8 result;
+            std::tie(result, SR.carry) = ALU::rotate_left(memory, SR.carry);
+            wait_for_pulse();
+            std::tie(result, SR.zero, SR.negative) = value_with_flags(result);
+            _memory.write(address, result);
+        } else if (const auto address = fetch_address(*addressing); std::holds_alternative<accumulator_t>(address)) {
+            wait_for_pulse();
+            std::tie(AC, SR.carry)             = ALU::rotate_left(AC, SR.carry);
+            std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC);
+        } else if (std::holds_alternative<mtl::u16>(address)) {
+            const auto memory = read(std::get<mtl::u16>(address));
+            wait_for_pulse();
+            mtl::u8 result;
+            std::tie(result, SR.carry)             = ALU::rotate_left(memory, SR.carry);
+            std::tie(result, SR.zero, SR.negative) = value_with_flags(result);
+            wait_for_pulse();
+            _memory.write(std::get<mtl::u16>(address), result);
+        } else mtl::panic("Unsupported addressing mode for ROL");
+    } break;
 
-    case Instruction::ROR: shift_or_rotate(*addressing, ALU::rotate_right, Instruction::ROR); break;
+    case Instruction::ROR: {
+        if (*addressing == Addressing::AbsoluteX) {
+            const auto address = fetch_absolute_address_long(X);
+            const auto memory  = read(address);
+            wait_for_pulse();
+            mtl::u8 result;
+            std::tie(result, SR.carry) = ALU::rotate_right(memory, SR.carry);
+            wait_for_pulse();
+            std::tie(result, SR.zero, SR.negative) = value_with_flags(result);
+            _memory.write(address, result);
+        } else if (const auto address = fetch_address(*addressing); std::holds_alternative<accumulator_t>(address)) {
+            wait_for_pulse();
+            std::tie(AC, SR.carry)             = ALU::rotate_right(AC, SR.carry);
+            std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC);
+        } else if (std::holds_alternative<mtl::u16>(address)) {
+            const auto memory = read(std::get<mtl::u16>(address));
+            wait_for_pulse();
+            mtl::u8 result;
+            std::tie(result, SR.carry)             = ALU::rotate_right(memory, SR.carry);
+            std::tie(result, SR.zero, SR.negative) = value_with_flags(result);
+            wait_for_pulse();
+            _memory.write(std::get<mtl::u16>(address), result);
+        } else mtl::panic("Unsupported addressing mode for ROR");
+    } break;
 
     case Instruction::INC: {
         if (*addressing == Addressing::AbsoluteX) {
@@ -562,28 +654,6 @@ void CPU::return_from_interrupt() noexcept {
     const auto pcl = read(make_word(mtl::u8(0x01), SP++));
     const auto pch = read(make_word(mtl::u8(0x01), SP++));
     PC             = make_word(pch, pcl);
-}
-
-void CPU::shift_or_rotate(const Addressing addressing,
-                          mtl::u8 (*operation)(mtl::u8, StatusRegister &),
-                          const Instruction instruction) noexcept {
-    if (addressing == Addressing::AbsoluteX) {
-        const auto address = fetch_absolute_address_long(X);
-        const auto memory  = read(address);
-        wait_for_pulse();
-        const auto result = operation(memory, SR);
-        wait_for_pulse();
-        _memory.write(address, result);
-    } else if (const auto address = fetch_address(addressing); std::holds_alternative<accumulator_t>(address)) {
-        wait_for_pulse();
-        AC = operation(AC, SR);
-    } else if (std::holds_alternative<mtl::u16>(address)) {
-        const auto memory = read(std::get<mtl::u16>(address));
-        wait_for_pulse();
-        const auto result = operation(memory, SR);
-        wait_for_pulse();
-        _memory.write(std::get<mtl::u16>(address), result);
-    } else mtl::panic("Unsupported addressing mode for " + to_string(instruction));
 }
 
 mtl::u16 CPU::fetch_absolute_address_long(const mtl::u8 index) noexcept {

@@ -5,7 +5,6 @@
 #include "ALU.hpp"
 
 #include <cassert>
-#include <tuple>
 #include <utility>
 
 namespace emulator::mos_6502::ALU {
@@ -110,42 +109,19 @@ std::tuple<mtl::u8, bool, bool> subtract_decimal(const mtl::u8 lhs, const mtl::u
     return { result, !borrow, internal::is_sign_bit_different(result, lhs) };
 }
 
-mtl::u8 shift_right(mtl::u8 a, StatusRegister &sr) noexcept {
-    sr.carry = (a & mtl::u8(1)) != 0; // store the rightmost bit
-    a >>= 1;
+std::pair<mtl::u8, bool> shift_right(const mtl::u8 byte) noexcept { return { byte >> 1, (byte & mtl::u8(1)) != 0 }; }
 
-    sr.negative = false;
-    sr.zero     = a == 0;
-    return a;
-}
-
-mtl::u8 shift_left(const mtl::u8 a, StatusRegister &sr) noexcept {
-    const auto [shifted, overflow] = shift_left(a, 1);
-    sr.carry                       = overflow;
-
-    sr.negative = (shifted & mtl::u8(0x80)) != 0;
-    sr.zero     = shifted == 0;
-    return shifted;
-}
-
-mtl::u8 rotate_left(const mtl::u8 a, StatusRegister &sr) noexcept {
+std::pair<mtl::u8, bool> rotate_left(const mtl::u8 a, const bool carry) noexcept {
     auto [shifted, overflow] = shift_left(a, 1);
-    if (sr.carry) shifted |= mtl::u8(1); // set the rightmost bit
-
-    sr.carry    = overflow;
-    sr.negative = (shifted & mtl::u8(0x80)) != 0;
-    sr.zero     = shifted == 0;
-    return shifted;
+    if (carry) shifted |= mtl::u8(1); // set the rightmost bit
+    return { shifted, overflow };
 }
 
-mtl::u8 rotate_right(mtl::u8 a, StatusRegister &sr) noexcept {
+std::pair<mtl::u8, bool> rotate_right(mtl::u8 a, const bool carry) noexcept {
     const bool output_carry = (a & mtl::u8(1)) != 0; // store the rightmost bit
     a >>= 1;
-    if (sr.carry) a |= mtl::u8(0x80); // set the leftmost bit
+    if (carry) a |= mtl::u8(0x80); // set the leftmost bit
 
-    sr.carry    = output_carry;
-    sr.negative = (a & mtl::u8(0x80)) != 0;
-    sr.zero     = a == 0;
-    return a;
+    return { a, output_carry };
 }
 } // namespace emulator::mos_6502::ALU

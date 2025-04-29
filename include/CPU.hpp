@@ -145,15 +145,7 @@ private:
 
     void return_from_interrupt() noexcept;
 
-    /**
-     * Contains a special case for absolute indexed addressing.
-     * It always spends an extra cycle to add carry to the high byte of the address.
-     */
-    void shift_or_rotate(Addressing addressing,
-                         mtl::u8 (*operation)(mtl::u8, StatusRegister &),
-                         Instruction instruction) noexcept;
-
-    mtl::u16 fetch_absolute_address_long(mtl::u8 index) noexcept;
+    [[nodiscard]] mtl::u16 fetch_absolute_address_long(mtl::u8 index) noexcept;
 
     /**
      * @param src The new value

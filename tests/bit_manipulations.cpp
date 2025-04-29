@@ -8,39 +8,21 @@ namespace emulator::mos_6502::test {
 using TestParameters = std::tuple<mtl::u8, bool, mtl::u8>;
 
 struct BitManip : testing::TestWithParam<TestParameters> {
-    StatusRegister sr;
-
     mtl::u8 input{0};
     bool input_carry = false;
     mtl::u8 output{0};
 
     void SetUp() override {
         std::tie(input, input_carry, output) = GetParam();
-
-        sr = { .negative  = false,
-               .overflow  = false,
-               .break_    = false,
-               .decimal   = false,
-               .interrupt_disable = false,
-               .zero      = false,
-               .carry     = input_carry };
-    }
-
-    void TearDown() override {
-        EXPECT_EQ(sr.negative, std::bit_cast<mtl::i8>(output) < mtl::i8(0));
-        EXPECT_FALSE(sr.overflow);
-        EXPECT_FALSE(sr.break_);
-        EXPECT_FALSE(sr.decimal);
-        EXPECT_FALSE(sr.interrupt_disable);
-        EXPECT_EQ(sr.zero, output == 0);
     }
 };
 
 struct ShiftRight : BitManip {};
 
 TEST_P(ShiftRight, Test) {
-    EXPECT_EQ(ALU::shift_right(input, sr), output);
-    EXPECT_EQ(sr.carry, (input & mtl::u8(1)) != 0);
+    const auto [result, carry] = ALU::shift_right(input);
+    EXPECT_EQ(result, output);
+    EXPECT_EQ(carry, (input & mtl::u8(1)) != 0);
 }
 
 INSTANTIATE_TEST_SUITE_P(Values,
@@ -55,30 +37,12 @@ INSTANTIATE_TEST_SUITE_P(Values,
                                            TestParameters{ 0b11001101, true, 0b01100110 },
                                            TestParameters{ 0b11111111, true, 0b01111111 }));
 
-struct ShiftLeft : BitManip {};
-
-TEST_P(ShiftLeft, Test) {
-    EXPECT_EQ(ALU::shift_left(input, sr), output);
-    EXPECT_EQ(sr.carry, (input & mtl::u8(0x80)) != 0);
-}
-
-INSTANTIATE_TEST_SUITE_P(Values,
-                         ShiftLeft,
-                         ::testing::Values(TestParameters{ 0b00000000, true, 0b00000000 },
-                                           TestParameters{ 0b10000000, true, 0b00000000 },
-                                           TestParameters{ 0b01000000, true, 0b10000000 },
-                                           TestParameters{ 0b11000011, true, 0b10000110 },
-                                           TestParameters{ 0b01010101, true, 0b10101010 },
-                                           TestParameters{ 0b10101010, true, 0b01010100 },
-                                           TestParameters{ 0b00000001, true, 0b00000010 },
-                                           TestParameters{ 0b10011000, true, 0b00110000 },
-                                           TestParameters{ 0b11111111, true, 0b11111110 }));
-
 struct RotateLeft : BitManip {};
 
 TEST_P(RotateLeft, Test) {
-    EXPECT_EQ(ALU::rotate_left(input, sr), output);
-    EXPECT_EQ(sr.carry, (input & mtl::u8(0x80)) != 0);
+    const auto [result, carry] = ALU::rotate_left(input, input_carry);
+    EXPECT_EQ(result, output);
+    EXPECT_EQ(carry, (input & mtl::u8(0x80)) != 0);
 }
 
 INSTANTIATE_TEST_SUITE_P(Values,
@@ -105,8 +69,9 @@ INSTANTIATE_TEST_SUITE_P(Values,
 struct RotateRight : BitManip {};
 
 TEST_P(RotateRight, Test) {
-    EXPECT_EQ(ALU::rotate_right(input, sr), output);
-    EXPECT_EQ(sr.carry, (input & mtl::u8(0x01)) != 0);
+    const auto [result, carry] = ALU::rotate_right(input, input_carry);
+    EXPECT_EQ(result, output);
+    EXPECT_EQ(carry, (input & mtl::u8(0x01)) != 0);
 }
 
 INSTANTIATE_TEST_SUITE_P(Values,

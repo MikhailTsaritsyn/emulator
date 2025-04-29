@@ -5,7 +5,6 @@
 #ifndef EMULATOR_MOS_6502_ALU_HPP
 #define EMULATOR_MOS_6502_ALU_HPP
 #include "mtl/core.hpp"
-#include "StatusRegister.hpp"
 
 namespace emulator::mos_6502::ALU {
 /**
@@ -84,28 +83,13 @@ namespace emulator::mos_6502::ALU {
 /**
  * @brief Shift an unsigned 8-bit integer right one bit
  *
- * @param[in] a The number to be shifted.
- * @param[out] sr Does not affect the operation. Some of its flags are set as a result.
+ * @param byte The number to be shifted.
  *
- * @post The status register is updated at the end of the operation.
- *       - The carry flag is set equal to bit 0 of the input.
- *       - The negative flag is always reset.
- *       - The zero flag is set if the result is zero, otherwise it is reset.
+ * @return {result, carry}
+ * @retval result The shifted value
+ * @retval carry Is set equal to bit 0 of the input.
  */
-[[nodiscard]] mtl::u8 shift_right(mtl::u8 a, StatusRegister &sr) noexcept;
-
-/**
- * @brief Shift an unsigned 8-bit integer left one bit
- *
- * @param[in] a The number to be shifted.
- * @param[out] sr Does not affect the operation. Some of its flags are set as a result.
- *
- * @post The status register is updated at the end of the operation.
- *       - The carry flag is set equal to bit 7 of the input.
- *       - The negative flag is set to result bit 7 (input bit 6).
- *       - The zero flag is set if the result of the shift is zero and reset otherwise.
- */
-[[nodiscard]] mtl::u8 shift_left(mtl::u8 a, StatusRegister &sr) noexcept;
+[[nodiscard]] std::pair<mtl::u8, bool> shift_right(mtl::u8 byte) noexcept;
 
 /**
  * @brief Rotate an unsigned 8-bit integer left one bit
@@ -113,17 +97,9 @@ namespace emulator::mos_6502::ALU {
  * The input carry goes into the rightmost bit.
  * The leftmost bit goes into the output carry.
  *
- * @param[in] a Value to be rotated
- * @param[in, out] sr Its carry is used as an input and is put to the rightmost bit of the result.
- *                    The output carry is equal to the leftmost bit of the input value.
- *                    Some other flags are set as well.
- *
- * @post The status register is updated at the end of the operation.
- *       - The carry flag is set equal to input bit 7.
- *       - The negative flag is set equal to input bit 6.
- *       - The zero flag is set if the result is zero, otherwise it is reset.
+ * @return {result, carry}
  */
-[[nodiscard]] mtl::u8 rotate_left(mtl::u8 a, StatusRegister &sr) noexcept;
+[[nodiscard]] std::pair<mtl::u8, bool> rotate_left(mtl::u8 a, bool carry) noexcept;
 
 /**
  * @brief Rotate an unsigned 8-bit integer right one bit
@@ -131,17 +107,9 @@ namespace emulator::mos_6502::ALU {
  * The input carry goes into the leftmost bit.
  * The rightmost bit goes into the output carry.
  *
- * @param[in] a Value to be rotated
- * @param[in, out] sr Its carry is used as an input and is put to the leftmost bit of the result.
- *                    The output carry is equal to the rightmost bit of the input value.
- *                    Some other flags are set as well.
- *
- * @post The status register is updated at the end of the operation.
- *       - The carry flag is set equal to input bit 0.
- *       - The negative flag is set equal to input carry.
- *       - The zero flag is set if the result is zero, otherwise it is reset.
+ * @return {result, carry}
  */
-[[nodiscard]] mtl::u8 rotate_right(mtl::u8 a, StatusRegister &sr) noexcept;
+[[nodiscard]] std::pair<mtl::u8, bool> rotate_right(mtl::u8 a, bool carry) noexcept;
 } // namespace emulator::mos_6502::ALU
 
 #endif //EMULATOR_MOS_6502_ALU_HPP
