@@ -6,26 +6,26 @@
 #define EMULATOR_MOS_6502_ALU_HPP
 #include "mtl/core.hpp"
 #include "StatusRegister.hpp"
-#include <cstdint>
+
+// TODO: split binary and decimal onto two functions?
 
 namespace emulator::mos_6502::ALU {
 /**
  * @brief Add two unsigned 8-bit integers with carry
  *
- * @param[in] a The first value to add
- * @param[in] b The second value to add
- * @param[in, out] sr The carry value is taken from it.
- *                    After the addition is performed, some of its flags are updated.
+ * @param lhs The first value to add
+ * @param rhs The second value to add
+ * @param carry Value of the carry to be added
+ * @param decimal If true, then the computation is done in decimal mode
  *
- * @return Unsigned 8-bit result modulo 256
- *
- * @post The status register is updated at the end of the operation.
- *       - The carry flag is set when the sum of a binary addition exceeds 255
- *         or when the sum of a decimal addition exceeds 99, otherwise it is reset.
- *       - The overflow flag is set whe the sign or bit 7 differs from that of the first value
- *         due to result exceeding +127 or -128, otherwise it is reset.
+ * @return {sum, carry, overflow}
+ * @retval sum Unsigned 8-bit result modulo 256
+ * @retval carry Is set when the sum of a binary addition exceeds 255
+ *               or when the sum of a decimal addition exceeds 99, otherwise it is reset.
+ * @retval overflow Is set whe the sign or bit 7 differs from that of the first value
+ *                  due to result exceeding +127 or -128, otherwise it is reset.
  */
-[[nodiscard]] mtl::u8 add(mtl::u8 a, mtl::u8 b, StatusRegister &sr) noexcept;
+[[nodiscard]] std::tuple<mtl::u8, bool, bool> add(mtl::u8 lhs, mtl::u8 rhs, bool carry, bool decimal) noexcept;
 
 /**
  * @brief Add two unsigned 8-bit integers with borrow
@@ -33,19 +33,18 @@ namespace emulator::mos_6502::ALU {
  * The borrow means that a previous operation has to borrow 1 from the current value.
  * If a single-precision is performed, there is no borrow in the beginning.
  *
- * @param[in] a The value to subtract from
- * @param[in] b The value to subtract
- * @param[in, out] sr The carry, or borrow, value is taken from it.
- *                    After the subtraction is performed, some of its flags are updated.
+ * @param lhs The value to subtract from
+ * @param rhs The value to subtract
+ * @param carry Its negated value is subtracted
+ * @param decimal If true, then the computation is done in decimal mode
  *
- * @return Unsigned 8-bit result modulo 256
- *
- * @post The status register is updated at the end of the operation.
- *       - The carry flag is set if the result is greater than or equal to zero,
- *       otherwise it is reset indicating a borrow.
- *       - The overflow flag is set when the result exceeds +127 or -127, otherwise it is reset.
+ * @return {result, carry, overflow}
+ * @retval result Unsigned 8-bit result modulo 256
+ * @retval carry Is set if the result is greater than or equal to zero,
+ *               otherwise it is reset indicating a borrow.
+ * @retval overflow Is set when the result exceeds +127 or -127, otherwise it is reset.
  */
-[[nodiscard]] mtl::u8 subtract(mtl::u8 a, mtl::u8 b, StatusRegister &sr) noexcept;
+[[nodiscard]] std::tuple<mtl::u8, bool, bool> subtract(mtl::u8 lhs, mtl::u8 rhs, bool carry, bool decimal) noexcept;
 
 /**
  * @brief Shift an unsigned 8-bit integer right one bit

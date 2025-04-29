@@ -157,19 +157,27 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
 
     case Instruction::ADC: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
-            std::tie(AC, SR.negative, SR.zero) = value_with_flags(ALU::add(AC, read(PC++), SR));
+            mtl::u8 result;
+            std::tie(result, SR.carry, SR.overflow) = ALU::add(AC, read(PC++), SR.carry, SR.decimal);
+            std::tie(AC, SR.negative, SR.zero)      = value_with_flags(result);
         } else if (std::holds_alternative<mtl::u16>(address)) {
-            const auto arg = read(std::get<mtl::u16>(address));
-            std::tie(AC, SR.negative, SR.zero) = value_with_flags(ALU::add(AC, arg, SR));
+            const auto memory = read(std::get<mtl::u16>(address));
+            mtl::u8 result;
+            std::tie(result, SR.carry, SR.overflow) = ALU::add(AC, memory, SR.carry, SR.decimal);
+            std::tie(AC, SR.negative, SR.zero)      = value_with_flags(result);
         } else mtl::panic("Unsupported addressing mode for ADC");
     } break;
 
     case Instruction::SBC: {
         if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
-            std::tie(AC, SR.negative, SR.zero) = value_with_flags(ALU::subtract(AC, read(PC++), SR));
+            mtl::u8 result;
+            std::tie(result, SR.carry, SR.overflow) = ALU::subtract(AC, read(PC++), SR.carry, SR.decimal);
+            std::tie(AC, SR.negative, SR.zero)      = value_with_flags(result);
         } else if (std::holds_alternative<mtl::u16>(address)) {
-            const auto arg = read(std::get<mtl::u16>(address));
-            std::tie(AC, SR.negative, SR.zero) = value_with_flags(ALU::subtract(AC, arg, SR));
+            const auto memory = read(std::get<mtl::u16>(address));
+            mtl::u8 result;
+            std::tie(result, SR.carry, SR.overflow) = ALU::subtract(AC, memory, SR.carry, SR.decimal);
+            std::tie(AC, SR.negative, SR.zero)      = value_with_flags(result);
         } else mtl::panic("Unsupported addressing mode for SBC");
     } break;
 

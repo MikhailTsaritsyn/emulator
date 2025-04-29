@@ -8,21 +8,9 @@ namespace emulator::mos_6502::test {
 using TestParameters = std::tuple<mtl::u8, mtl::u8, bool, mtl::u8, bool>;
 
 struct DecimalArithmetic : testing::TestWithParam<TestParameters> {
-    StatusRegister sr;
-
     mtl::u8 input_first{0};
     mtl::u8 input_second{0};
     mtl::u8 output{0};
-
-    void TearDown() override {
-        EXPECT_FALSE(sr.negative);
-        EXPECT_EQ(sr.overflow, (std::bit_cast<mtl::i8>(input_first) < mtl::i8(0)) != (std::bit_cast<mtl::i8>(output) < mtl::i8(0)))
-                << input_first << " -> " << output;
-        EXPECT_FALSE(sr.break_);
-        EXPECT_TRUE(sr.decimal);
-        EXPECT_FALSE(sr.interrupt_disable);
-        EXPECT_FALSE(sr.zero);
-    }
 };
 
 struct DecimalAddition : DecimalArithmetic {
@@ -31,23 +19,17 @@ struct DecimalAddition : DecimalArithmetic {
 
     void SetUp() override {
         std::tie(input_first, input_second, input_carry, output, output_carry) = GetParam();
-
-        sr = { .negative  = false,
-               .overflow  = false,
-               .break_    = false,
-               .decimal   = true,
-               .interrupt_disable = false,
-               .zero      = false,
-               .carry     = input_carry };
     }
 };
 
 TEST_P(DecimalAddition, Test) {
-    EXPECT_EQ(ALU::add(input_first, input_second, sr), output);
+    const auto [sum, carry, overflow] = ALU::add(input_first, input_second, input_carry, true);
+    EXPECT_EQ(sum, output);
 
     const auto result_raw = static_cast<int>(input_first.to_underlying()) + static_cast<int>(input_second.to_underlying()) + (input_carry ? 1 : 0);
-    EXPECT_EQ(sr.carry, output_carry) << "result = " << std::hex << output << '(' << result_raw << ')'
-                                      << std::dec;
+    EXPECT_EQ(carry, output_carry) << "result = " << std::hex << output << '(' << result_raw << ')' << std::dec;
+    EXPECT_EQ(overflow, (std::bit_cast<mtl::i8>(input_first) < mtl::i8(0)) != (std::bit_cast<mtl::i8>(output) < mtl::i8(0)))
+            << input_first << " -> " << output;
 }
 
 INSTANTIATE_TEST_SUITE_P(Zero,
@@ -88,23 +70,17 @@ struct DecimalSubtraction : DecimalArithmetic {
 
     void SetUp() override {
         std::tie(input_first, input_second, input_borrow, output, output_borrow) = GetParam();
-
-        sr = { .negative  = false,
-               .overflow  = false,
-               .break_    = false,
-               .decimal   = true,
-               .interrupt_disable = false,
-               .zero      = false,
-               .carry     = !input_borrow };
     }
 };
 
 TEST_P(DecimalSubtraction, Test) {
-    EXPECT_EQ(ALU::subtract(input_first, input_second, sr), output);
+    const auto [sum, carry, overflow] = ALU::subtract(input_first, input_second, !input_borrow, true);
+    EXPECT_EQ(sum, output);
 
     const auto result_raw = static_cast<int>(input_first.to_underlying()) - static_cast<int>(input_second.to_underlying()) - (input_borrow ? 1 : 0);
-    EXPECT_EQ(sr.carry, !output_borrow) << "result = " << std::hex << output << '(' << result_raw
-                                        << ')' << std::dec;
+    EXPECT_EQ(carry, !output_borrow) << "result = " << std::hex << output << '(' << result_raw << ')' << std::dec;
+    EXPECT_EQ(overflow, (std::bit_cast<mtl::i8>(input_first) < mtl::i8(0)) != (std::bit_cast<mtl::i8>(output) < mtl::i8(0)))
+            << input_first << " -> " << output;
 }
 
 INSTANTIATE_TEST_SUITE_P(Zero,

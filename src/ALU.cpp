@@ -5,7 +5,6 @@
 #include "ALU.hpp"
 
 #include <cassert>
-#include <limits>
 #include <utility>
 
 namespace emulator::mos_6502::ALU {
@@ -156,24 +155,17 @@ namespace internal {
 }
 } // namespace internal
 
-mtl::u8 add(const mtl::u8 a, const mtl::u8 b, StatusRegister &sr) noexcept {
-    bool carry        = sr.carry; // bit-field sr.carry cannot be used as an in-out boolean
-    const auto result = sr.decimal ? internal::add_decimal(a, b, carry) : internal::add_binary(a, b, carry);
-
-    sr.carry    = carry;
-    sr.overflow = (result & mtl::u8(0x80)) != (a & mtl::u8(0x80)); // Compare the sign bits
-
-    return result;
+std::tuple<mtl::u8, bool, bool> add(const mtl::u8 lhs, const mtl::u8 rhs, bool carry, const bool decimal) noexcept {
+    const auto result = decimal ? internal::add_decimal(lhs, rhs, carry) : internal::add_binary(lhs, rhs, carry);
+    return { result, carry, (result & mtl::u8(0x80)) != (lhs & mtl::u8(0x80)) };
 }
 
-mtl::u8 subtract(const mtl::u8 a, const mtl::u8 b, StatusRegister &sr) noexcept {
-    bool borrow       = !sr.carry;
-    const auto result = sr.decimal ? internal::subtract_decimal(a, b, borrow) : internal::subtract_binary(a, b, borrow);
-
-    sr.carry    = !borrow;
-    sr.overflow = (result & mtl::u8(0x80)) != (a & mtl::u8(0x80)); // Compare the sign bits
-
-    return result;
+std::tuple<mtl::u8, bool, bool>
+subtract(const mtl::u8 lhs, const mtl::u8 rhs, const bool carry, const bool decimal) noexcept {
+    bool borrow = !carry;
+    const auto result =
+            decimal ? internal::subtract_decimal(lhs, rhs, borrow) : internal::subtract_binary(lhs, rhs, borrow);
+    return { result, !borrow, (result & mtl::u8(0x80)) != (lhs & mtl::u8(0x80)) };
 }
 
 mtl::u8 shift_right(mtl::u8 a, StatusRegister &sr) noexcept {
