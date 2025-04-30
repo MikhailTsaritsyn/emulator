@@ -4,12 +4,15 @@
 #include <thread>
 
 void emulate(const std::chrono::nanoseconds clock_period, const std::chrono::nanoseconds time) {
-    emulator::mos_6502::Memory::Data data{};
-    std::ranges::fill(data, mtl::u8{ 0 });
-    emulator::mos_6502::CPU cpu{ emulator::mos_6502::Memory{ data } }; // executes as fast as it can
+    emulator::mos_6502::CPU cpu{}; // executes as fast as it can
 
     emulator::mos_6502::Clock clock(clock_period);
-    std::jthread thread{ [&cpu, &clock] { cpu.start(clock); } };
+
+    emulator::mos_6502::Memory::Data data{};
+    std::ranges::fill(data, mtl::u8{ 0 });
+    emulator::mos_6502::Memory memory{ data };
+
+    std::jthread thread{ [&cpu, &clock, &memory] { cpu.start(memory, clock); } };
     std::this_thread::sleep_for(time);
 
     std::cout << "Terminating..." << std::endl;

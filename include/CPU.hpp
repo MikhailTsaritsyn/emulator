@@ -33,16 +33,17 @@ public:
      */
     static constexpr mtl::u16 IRQ{ 0xFFFE };
 
-    explicit CPU(Memory memory) noexcept;
+    CPU() noexcept = default;
 
     /**
      * @brief Start the CPU
      *
+     * @param memory
      * @param clock Pulse generator for the CPU.
      *
      * It enters an endless loop executing instructions one by one.
      */
-    void start(Clock &clock) noexcept;
+    void start(Memory &memory, Clock &clock) noexcept;
 
     /**
      * @brief Reset the CPU to its initial state
@@ -55,16 +56,6 @@ public:
      * It is designed to be called from a thread other than that running the CPU.
      */
     void terminate() noexcept;
-
-    /**
-     * @brief Get a view of the CPU's memory
-     */
-    [[nodiscard]] const Memory &memory() const & noexcept;
-
-    /**
-     * @brief Get a copy of the CPU's memory
-     */
-    [[nodiscard]] Memory &&memory() && noexcept;
 
     [[nodiscard]] mtl::u16 program_counter() const noexcept;
 
@@ -106,7 +97,7 @@ private:
      * @param[in]      y Index register Y
      * @param[in, out] clock Emulated CPU clock
      */
-    [[nodiscard]] Address fetch_address(
+    [[nodiscard]] static Address fetch_address(
             Addressing addressing, const Memory &memory, mtl::u16 &pc, mtl::u8 x, mtl::u8 y, Clock &clock) noexcept;
 
     [[nodiscard]] static mtl::u16 fetch_absolute_address(const Memory &memory, mtl::u16 &pc, Clock &clock) noexcept;
@@ -116,11 +107,11 @@ private:
 
     [[nodiscard]] static mtl::u16 fetch_indirect_address(const Memory &memory, mtl::u16 &pc, Clock &clock) noexcept;
 
-    [[nodiscard]] mtl::u16
-    fetch_indexed_indirect_address(const Memory &memory, mtl::u16 &pc, Clock &clock) const noexcept;
+    [[nodiscard]] static mtl::u16
+    fetch_indexed_indirect_address(const Memory &memory, mtl::u16 &pc, mtl::u8 x, Clock &clock) noexcept;
 
-    [[nodiscard]] mtl::u16
-    fetch_indirect_indexed_address(const Memory &memory, mtl::u16 &pc, Clock &clock) const noexcept;
+    [[nodiscard]] static mtl::u16
+    fetch_indirect_indexed_address(const Memory &memory, mtl::u16 &pc, mtl::u8 y, Clock &clock) noexcept;
 
     [[nodiscard]] static mtl::u16 fetch_zero_page_address(const Memory &memory, mtl::u16 &pc, Clock &clock) noexcept;
 
@@ -158,7 +149,7 @@ private:
      */
     [[nodiscard]] static std::tuple<bool, bool, bool> compare(mtl::u8 a, mtl::u8 b) noexcept;
 
-    [[nodiscard]] mtl::u8 push(mtl::u8 sp, mtl::u8 byte) noexcept;
+    [[nodiscard]] static mtl::u8 push(Memory &memory, mtl::u8 sp, mtl::u8 byte) noexcept;
 
     /**
      * @break Jump to the interrupt handler
@@ -176,12 +167,12 @@ private:
      * @retvap PC New program counter pointing at the start of the interrupt handling routine
      * @retval SP Updated stack pointer
      */
-    [[nodiscard]] std::pair<mtl::u16, mtl::u8> interrupt(const Memory &memory,
-                                                         mtl::u16 pc,
-                                                         mtl::u8 sp,
-                                                         StatusRegister sr,
-                                                         mtl::u16 handler_address,
-                                                         Clock &clock) noexcept;
+    [[nodiscard]] static std::pair<mtl::u16, mtl::u8> interrupt(Memory &memory,
+                                                                mtl::u16 pc,
+                                                                mtl::u8 sp,
+                                                                StatusRegister sr,
+                                                                mtl::u16 handler_address,
+                                                                Clock &clock) noexcept;
 
     /**
      * @brief Transfers from the stack the processor status and the program counter for the instruction
@@ -285,9 +276,6 @@ private:
      * @note All arithmetic operations update the Z, N, C and V flags.
      */
     StatusRegister SR{};
-
-    /// @brief Memory used by the CPU
-    Memory _memory;
 
     /// @brief If @p true, the CPU must stop after completing the current operation
     std::atomic_flag _terminate = false;
