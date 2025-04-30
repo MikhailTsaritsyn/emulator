@@ -13,11 +13,8 @@ namespace emulator::mos_6502 {
 CPU::CPU(Memory memory) noexcept : _memory(std::move(memory)) {}
 
 void CPU::start(Clock &clock) noexcept {
-    auto prev_time = std::chrono::high_resolution_clock::now();
-
     reset(clock);
 
-    static constexpr size_t window = 100;
     while (!_terminate.test()) {
         if (_non_maskable_interrupt_requested.test()) std::tie(PC, SP) = interrupt(PC, SP, SR, NMI, clock);
         if (_interrupt_requested.test() && !SR.interrupt_disable) std::tie(PC, SP) = interrupt(PC, SP, SR, IRQ, clock);
@@ -29,22 +26,10 @@ void CPU::start(Clock &clock) noexcept {
                       << std::endl;
             _terminate.test_and_set();
         }
-
-        // Update the elapsed time every 100 pulses to reduce the overhead
-        if (_cycle % window == 0) {
-            const auto current_time                     = std::chrono::high_resolution_clock::now();
-            _elapsed += current_time - prev_time;
-            prev_time                                   = current_time;
-        }
     }
-
-    // Add the remaining cycles after the last window
-    _elapsed += std::chrono::high_resolution_clock::now() - prev_time;
 }
 
 void CPU::terminate() noexcept { _terminate.test_and_set(); }
-
-double CPU::frequency() const noexcept { return static_cast<double>(_cycle) / _elapsed.count(); }
 
 const Memory &CPU::memory() const & noexcept { return _memory; }
 
@@ -52,11 +37,8 @@ Memory &&CPU::memory() && noexcept { return std::move(_memory); }
 
 mtl::u16 CPU::program_counter() const noexcept { return PC; }
 
-size_t CPU::cycle() const noexcept { return _cycle; }
-
 void CPU::wait_for_pulse(Clock &clock) noexcept {
     clock.wait_for_pulse();
-    _cycle++;
 }
 
 CPU::Address
