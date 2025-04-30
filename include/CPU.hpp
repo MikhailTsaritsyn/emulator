@@ -42,7 +42,7 @@ public:
     /**
      * @brief Reset the CPU to its initial state
      */
-    void reset() noexcept;
+    void reset(Clock &clock) noexcept;
 
     /**
      * @brief Terminate the execution of the CPU
@@ -106,28 +106,30 @@ private:
     /**
      * @brief Determine the address of the current instruction's argument
      *
-     * @param addressing Addressing mode of the instruction
-     * @param pc The program counter
-     * @param x Index register X
-     * @param y Index register Y
+     * @param[in]      addressing Addressing mode of the instruction
+     * @param[in, out] pc The program counter
+     * @param[in]      x Index register X
+     * @param[in]      y Index register Y
+     * @param[in, out] clock Emulated CPU clock
      */
-    [[nodiscard]] Address fetch_address(Addressing addressing, mtl::u16 &pc, mtl::u8 x, mtl::u8 y) noexcept;
+    [[nodiscard]] Address
+    fetch_address(Addressing addressing, mtl::u16 &pc, mtl::u8 x, mtl::u8 y, Clock &clock) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_absolute_address(mtl::u16 &pc) noexcept;
+    [[nodiscard]] mtl::u16 fetch_absolute_address(mtl::u16 &pc, Clock &clock) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_absolute_address(mtl::u16 &pc, mtl::u8 index) noexcept;
+    [[nodiscard]] mtl::u16 fetch_absolute_address(mtl::u16 &pc, mtl::u8 index, Clock &clock) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_indirect_address(mtl::u16 &pc) noexcept;
+    [[nodiscard]] mtl::u16 fetch_indirect_address(mtl::u16 &pc, Clock &clock) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_indexed_indirect_address(mtl::u16 &pc) noexcept;
+    [[nodiscard]] mtl::u16 fetch_indexed_indirect_address(mtl::u16 &pc, Clock &clock) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_indirect_indexed_address(mtl::u16 &pc) noexcept;
+    [[nodiscard]] mtl::u16 fetch_indirect_indexed_address(mtl::u16 &pc, Clock &clock) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_zero_page_address(mtl::u16 &pc) noexcept;
+    [[nodiscard]] mtl::u16 fetch_zero_page_address(mtl::u16 &pc, Clock &clock) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_zero_page_address(mtl::u16 &pc, mtl::u8 index) noexcept;
+    [[nodiscard]] mtl::u16 fetch_zero_page_address(mtl::u16 &pc, mtl::u8 index, Clock &clock) noexcept;
 
-    [[nodiscard]] bool decode_and_execute(mtl::u8 opcode);
+    [[nodiscard]] bool decode_and_execute(mtl::u8 opcode, Clock &clock);
 
     /**
      * @brief Read a byte from a specified address of the memory
@@ -136,7 +138,7 @@ private:
      *
      * @post Increments the cycle count.
      */
-    mtl::u8 read(mtl::u16 address) noexcept;
+    mtl::u8 read(mtl::u16 address, Clock &clock) noexcept;
 
     /**
      * @brief Jump by a signed offset
@@ -193,7 +195,7 @@ private:
     [[nodiscard]] std::tuple<mtl::u16, mtl::u8, StatusRegister>
     return_from_interrupt(mtl::u16 pc, mtl::u8 sp, Clock &clock) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_absolute_address_long(mtl::u16 &pc, mtl::u8 index) noexcept;
+    [[nodiscard]] mtl::u16 fetch_absolute_address_long(mtl::u16 &pc, mtl::u8 index, Clock &clock) noexcept;
 
     /**
      * @param src The new value
