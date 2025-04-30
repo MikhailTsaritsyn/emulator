@@ -9,6 +9,7 @@
 #include "Opcode.hpp"
 #include "StatusRegister.hpp"
 #include <atomic>
+#include <tuple>
 
 // TODO: wait_for_clock() wrapper?
 
@@ -137,7 +138,10 @@ private:
 
     [[nodiscard]] mtl::u16 branch(bool condition) noexcept;
 
-    static void compare(mtl::u8 a, mtl::u8 b, StatusRegister &sr) noexcept;
+    /**
+     * @return {negative, carry, zero}
+     */
+    [[nodiscard]] static std::tuple<bool, bool, bool> compare(mtl::u8 a, mtl::u8 b) noexcept;
 
     void push(mtl::u8 byte) noexcept;
 

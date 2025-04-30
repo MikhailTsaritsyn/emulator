@@ -278,7 +278,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
         else if (std::holds_alternative<mtl::u16>(address)) memory = read(std::get<mtl::u16>(address));
         else mtl::panic("Unsupported addressing mode for CMP");
 
-        compare(AC, memory, SR);
+        std::tie(SR.negative, SR.carry, SR.zero) = compare(AC, memory);
     } break;
 
     case Instruction::BIT: {
@@ -345,7 +345,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
         else if (std::holds_alternative<mtl::u16>(address)) memory = read(std::get<mtl::u16>(address));
         else mtl::panic("Unsupported addressing mode for CPX");
 
-        compare(X, memory, SR);
+        std::tie(SR.negative, SR.carry, SR.zero) = compare(X, memory);
     } break;
 
     case Instruction::CPY: {
@@ -355,7 +355,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
         else if (std::holds_alternative<mtl::u16>(address)) memory = read(std::get<mtl::u16>(address));
         else mtl::panic("Unsupported addressing mode for CPY");
 
-        compare(Y, memory, SR);
+        std::tie(SR.negative, SR.carry, SR.zero) = compare(Y, memory);
     } break;
 
     case Instruction::TAX: {
@@ -623,10 +623,11 @@ mtl::u16 CPU::branch(const bool condition) noexcept {
     // Next operation reads an opcode from 0x00B2
 }
 
-void CPU::compare(const mtl::u8 a, const mtl::u8 b, StatusRegister &sr) noexcept {
-    sr.negative = (sub_with_overflow(a, b).first & mtl::u8(0x80)) != 0;
-    sr.carry    = a >= b;
-    sr.zero     = a == b;
+std::tuple<bool, bool, bool> CPU::compare(const mtl::u8 a, const mtl::u8 b) noexcept {
+    bool negative = (sub_with_overflow(a, b).first & mtl::u8(0x80)) != 0;
+    bool carry    = a >= b;
+    bool zero     = a == b;
+    return { negative, carry, zero };
 }
 
 void CPU::push(const mtl::u8 byte) noexcept {
