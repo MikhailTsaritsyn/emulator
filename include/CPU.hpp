@@ -101,7 +101,7 @@ private:
     /**
      * @brief Wait for the next clock tick and increment the cycle counter
      */
-    void wait_for_pulse() noexcept;
+    void wait_for_pulse(Clock &clock) noexcept;
 
     /**
      * @brief Determine the address of the current instruction's argument
