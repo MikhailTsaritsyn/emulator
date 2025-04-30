@@ -448,7 +448,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
 
     case Instruction::LSR: {
         if (*addressing == Addressing::AbsoluteX) {
-            const auto address = fetch_absolute_address_long(X);
+            const auto address = fetch_absolute_address_long(PC, X);
             const auto memory  = read(address);
             wait_for_pulse(_clock);
             mtl::u8 result;
@@ -474,7 +474,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
 
     case Instruction::ASL: {
         if (*addressing == Addressing::AbsoluteX) {
-            const auto address = fetch_absolute_address_long(X);
+            const auto address = fetch_absolute_address_long(PC, X);
             const auto memory  = read(address);
             wait_for_pulse(_clock);
             mtl::u8 result;
@@ -500,7 +500,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
 
     case Instruction::ROL: {
         if (*addressing == Addressing::AbsoluteX) {
-            const auto address = fetch_absolute_address_long(X);
+            const auto address = fetch_absolute_address_long(PC, X);
             const auto memory  = read(address);
             wait_for_pulse(_clock);
             mtl::u8 result;
@@ -526,7 +526,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
 
     case Instruction::ROR: {
         if (*addressing == Addressing::AbsoluteX) {
-            const auto address = fetch_absolute_address_long(X);
+            const auto address = fetch_absolute_address_long(PC, X);
             const auto memory  = read(address);
             wait_for_pulse(_clock);
             mtl::u8 result;
@@ -552,7 +552,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
 
     case Instruction::INC: {
         if (*addressing == Addressing::AbsoluteX) {
-            const auto address = fetch_absolute_address_long(X);
+            const auto address = fetch_absolute_address_long(PC, X);
             const auto memory  = read(address);
             wait_for_pulse(_clock);
             wait_for_pulse(_clock);
@@ -567,7 +567,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
 
     case Instruction::DEC: {
         if (*addressing == Addressing::AbsoluteX) {
-            const auto address = fetch_absolute_address_long(X);
+            const auto address = fetch_absolute_address_long(PC, X);
             const auto memory  = read(address);
             wait_for_pulse(_clock);
             wait_for_pulse(_clock);
@@ -664,9 +664,9 @@ std::tuple<mtl::u16, mtl::u8, StatusRegister> CPU::return_from_interrupt(mtl::u1
     return { make_word(pch, pcl), sp, sr };
 }
 
-mtl::u16 CPU::fetch_absolute_address_long(const mtl::u8 index) noexcept {
-    const auto adl           = read(PC++);
-    const auto adh           = read(PC++);
+mtl::u16 CPU::fetch_absolute_address_long(mtl::u16 &pc, const mtl::u8 index) noexcept {
+    const auto adl           = read(pc++);
+    const auto adh           = read(pc++);
     const auto [adlx, carry] = add_with_overflow(adl, index);
 
     // This cycle is wasted because read/modify/write instruction should wait

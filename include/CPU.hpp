@@ -189,7 +189,7 @@ private:
      */
     [[nodiscard]] std::tuple<mtl::u16, mtl::u8, StatusRegister> return_from_interrupt(mtl::u16 pc, mtl::u8 sp) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_absolute_address_long(mtl::u8 index) noexcept;
+    [[nodiscard]] mtl::u16 fetch_absolute_address_long(mtl::u16 &pc, mtl::u8 index) noexcept;
 
     /**
      * @param src The new value
