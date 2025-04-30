@@ -12,6 +12,8 @@
 #include <atomic>
 #include <tuple>
 
+// TODO: on_clock_pulse(Func &&func) wrapper?
+
 namespace emulator::mos_6502 {
 class CPU {
 public:
@@ -92,11 +94,6 @@ private:
     // TODO: specialize reading addresses
     // TODO: specialize writing addresses
     using Address = std::variant<accumulator_t, implicit_t, immediate_t, relative_t, mtl::u16>;
-
-    /**
-     * @brief Wait for the next clock tick and increment the cycle counter
-     */
-    void wait_for_pulse(Clock &clock) noexcept;
 
     /**
      * @brief Determine the address of the current instruction's argument
