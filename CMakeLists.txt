@@ -18,6 +18,7 @@ target_sources(emulator_core
     include/helpers.hpp
     include/Memory.hpp
     include/Opcode.hpp
+    include/Registers.hpp
     include/StatusRegister.hpp
 
     PRIVATE
