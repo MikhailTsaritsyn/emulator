@@ -21,8 +21,8 @@ void CPU::start() noexcept {
 
     static constexpr size_t window = 100;
     while (!_terminate.test()) {
-        if (_non_maskable_interrupt_requested.test()) std::tie(PC, SP) = interrupt(PC, SP, SR, NMI);
-        if (_interrupt_requested.test() && !SR.interrupt_disable) std::tie(PC, SP) = interrupt(PC, SP, SR, IRQ);
+        if (_non_maskable_interrupt_requested.test()) std::tie(PC, SP) = interrupt(PC, SP, SR, NMI, _clock);
+        if (_interrupt_requested.test() && !SR.interrupt_disable) std::tie(PC, SP) = interrupt(PC, SP, SR, IRQ, _clock);
 
         [[maybe_unused]] const auto opcode = read(PC++);
 
@@ -255,21 +255,21 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
         else mtl::panic("Unsupported addressing mode for JMP");
     } break;
 
-    case Instruction::BMI: PC = branch(PC, SR.negative); break;
+    case Instruction::BMI: PC = branch(PC, SR.negative, _clock); break;
 
-    case Instruction::BPL: PC = branch(PC, !SR.negative); break;
+    case Instruction::BPL: PC = branch(PC, !SR.negative, _clock); break;
 
-    case Instruction::BCC: PC = branch(PC, !SR.carry); break;
+    case Instruction::BCC: PC = branch(PC, !SR.carry, _clock); break;
 
-    case Instruction::BCS: PC = branch(PC, SR.carry); break;
+    case Instruction::BCS: PC = branch(PC, SR.carry, _clock); break;
 
-    case Instruction::BEQ: PC = branch(PC, SR.zero); break;
+    case Instruction::BEQ: PC = branch(PC, SR.zero, _clock); break;
 
-    case Instruction::BNE: PC = branch(PC, !SR.zero); break;
+    case Instruction::BNE: PC = branch(PC, !SR.zero, _clock); break;
 
-    case Instruction::BVS: PC = branch(PC, SR.overflow); break;
+    case Instruction::BVS: PC = branch(PC, SR.overflow, _clock); break;
 
-    case Instruction::BVC: PC = branch(PC, !SR.overflow); break;
+    case Instruction::BVC: PC = branch(PC, !SR.overflow, _clock); break;
 
     case Instruction::CMP: {
         mtl::u8 memory;
@@ -440,11 +440,11 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
         if (!SR.interrupt_disable) {
             wait_for_pulse(_clock);
             SP               = push(SP, static_cast<mtl::u8>(StatusRegister{ .break_ = true }));
-            std::tie(PC, SP) = interrupt(PC, SP, SR, IRQ);
+            std::tie(PC, SP) = interrupt(PC, SP, SR, IRQ, _clock);
         }
         break;
 
-    case Instruction::RTI: std::tie(PC, SP, SR) = return_from_interrupt(PC, SP); break;
+    case Instruction::RTI: std::tie(PC, SP, SR) = return_from_interrupt(PC, SP, _clock); break;
 
     case Instruction::LSR: {
         if (*addressing == Addressing::AbsoluteX) {
@@ -606,7 +606,7 @@ mtl::u8 CPU::read(const mtl::u16 address) noexcept {
     return _memory[address];
 }
 
-mtl::u16 CPU::branch(mtl::u16 pc, const bool condition) noexcept {
+mtl::u16 CPU::branch(mtl::u16 pc, const bool condition, Clock &clock) noexcept {
     // Assume PC = 0x0101
     const auto offset = std::bit_cast<mtl::i8>(read(pc++)); // assume -0x50
     if (!condition) return pc;
@@ -621,7 +621,7 @@ mtl::u16 CPU::branch(mtl::u16 pc, const bool condition) noexcept {
     case SignedOverflow::Positive: pch++; break;
     }
 
-    wait_for_pulse(_clock);
+    wait_for_pulse(clock);
     return make_word(pch, pcl); // 0x00B2
 
     // Next operation reads an opcode from 0x00B2
@@ -640,22 +640,24 @@ mtl::u8 CPU::push(const mtl::u8 sp, const mtl::u8 byte) noexcept {
 }
 
 std::pair<mtl::u16, mtl::u8>
-CPU::interrupt(const mtl::u16 pc, mtl::u8 sp, const StatusRegister sr, const mtl::u16 handler_address) noexcept {
+CPU::interrupt(
+        const mtl::u16 pc, mtl::u8 sp, const StatusRegister sr, const mtl::u16 handler_address, Clock &clock) noexcept {
     read(pc); // this data is discarded
-    wait_for_pulse(_clock);
+    wait_for_pulse(clock);
     sp = push(sp, high_byte(pc));
-    wait_for_pulse(_clock);
+    wait_for_pulse(clock);
     sp = push(sp, low_byte(pc));
-    wait_for_pulse(_clock);
+    wait_for_pulse(clock);
     sp             = push(sp, static_cast<mtl::u8>(sr));
     const auto pcl = read(handler_address);
     const auto pch = read(handler_address.next());
     return { make_word(pch, pcl), sp };
 }
 
-std::tuple<mtl::u16, mtl::u8, StatusRegister> CPU::return_from_interrupt(mtl::u16 pc, mtl::u8 sp) noexcept {
+std::tuple<mtl::u16, mtl::u8, StatusRegister>
+CPU::return_from_interrupt(mtl::u16 pc, mtl::u8 sp, Clock &clock) noexcept {
     read(pc++);
-    wait_for_pulse(_clock);
+    wait_for_pulse(clock);
     ++sp;
     StatusRegister sr;
     sr             = read(make_word(mtl::u8(0x01), sp++));

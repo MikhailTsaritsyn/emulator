@@ -143,13 +143,14 @@ private:
      *
      * The offset is read at the current program counter.
      *
-     * @param pc The current program counter.
-     * @param condition Whether to perform the jump.
-     *                  If @c false, continue execution at the current program counter.
+     * @param[in]      pc The current program counter.
+     * @param[in]      condition Whether to perform the jump.
+     *                           If @c false, continue execution at the current program counter.
+     * @param[in, out] clock Emulated CPU clock
      *
      * @return The new program counter value
      */
-    [[nodiscard]] mtl::u16 branch(mtl::u16 pc, bool condition) noexcept;
+    [[nodiscard]] mtl::u16 branch(mtl::u16 pc, bool condition, Clock &clock) noexcept;
 
     /**
      * @return {negative, carry, zero}
@@ -163,31 +164,34 @@ private:
      *
      * Saves the current program counter and status register on the stack.
      *
-     * @param pc Current program counter
-     * @param sp Current stack pointer
-     * @param sr Current status register
-     * @param handler_address Address where the low byte of the interrupt handler's address is stored.
+     * @param[in]      pc Current program counter
+     * @param[in]      sp Current stack pointer
+     * @param[in]      sr Current status register
+     * @param[in]      handler_address Address where the low byte of the interrupt handler's address is stored.
+     * @param[in, out] clock Emulated CPU clock
      *
      * @return {PC, SP}
      * @retvap PC New program counter pointing at the start of the interrupt handling routine
      * @retval SP Updated stack pointer
      */
     [[nodiscard]] std::pair<mtl::u16, mtl::u8>
-    interrupt(mtl::u16 pc, mtl::u8 sp, StatusRegister sr, mtl::u16 handler_address) noexcept;
+    interrupt(mtl::u16 pc, mtl::u8 sp, StatusRegister sr, mtl::u16 handler_address, Clock &clock) noexcept;
 
     /**
      * @brief Transfers from the stack the processor status and the program counter for the instruction
      *        which was interrupted
      *
-     * @param pc Current program counter
-     * @param sp Current stack pointer
+     * @param[in]      pc Current program counter
+     * @param[in]      sp Current stack pointer
+     * @param[in, out] clock Emulated CPU clock
      *
      * @return {PC, SP, SR}
      * @retval PC Program counter of the interrupted instruction
      * @retval SP Updated stack pointer
      * @retval SR Status register before interrupt
      */
-    [[nodiscard]] std::tuple<mtl::u16, mtl::u8, StatusRegister> return_from_interrupt(mtl::u16 pc, mtl::u8 sp) noexcept;
+    [[nodiscard]] std::tuple<mtl::u16, mtl::u8, StatusRegister>
+    return_from_interrupt(mtl::u16 pc, mtl::u8 sp, Clock &clock) noexcept;
 
     [[nodiscard]] mtl::u16 fetch_absolute_address_long(mtl::u16 &pc, mtl::u8 index) noexcept;
 
