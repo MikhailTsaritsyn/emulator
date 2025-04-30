@@ -69,6 +69,21 @@ struct StatusRegister {
     bool carry = false;
 
     /**
+     * @brief Get the value of each flag from a corresponding bit of an 8-bit integer
+     *
+     * Flags go in the following order from the least significant bit:
+     * 0. negative
+     * 1. overflow
+     * 2. expansion
+     * 3. break_
+     * 4. decimal
+     * 5. interrupt_disable
+     * 6. zero
+     * 7. carry
+     */
+    // explicit StatusRegister(mtl::u8 value) noexcept;
+
+    /**
      * @brief Convert each flag to a corresponding bit of an 8-bit integer
      *
      * Flags go in the following order from the least significant bit:

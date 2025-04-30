@@ -21,8 +21,8 @@ void CPU::start() noexcept {
 
     static constexpr size_t window = 100;
     while (!_terminate.test()) {
-        if (_non_maskable_interrupt_requested.test()) interrupt(NMI);
-        if (_interrupt_requested.test() && !SR.interrupt_disable) interrupt(IRQ);
+        if (_non_maskable_interrupt_requested.test()) std::tie(PC, SP) = interrupt(PC, SP, SR, NMI);
+        if (_interrupt_requested.test() && !SR.interrupt_disable) std::tie(PC, SP) = interrupt(PC, SP, SR, IRQ);
 
         [[maybe_unused]] const auto opcode = read(PC++);
 
@@ -382,9 +382,9 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
         const auto adl = read(PC++);
         wait_for_pulse();
         wait_for_pulse();
-        push(high_byte(PC));
+        SP = push(SP, high_byte(PC));
         wait_for_pulse();
-        push(low_byte(PC));
+        SP             = push(SP, low_byte(PC));
         const auto adh = read(PC);
         PC             = make_word(adh, adl);
     } break;
@@ -403,7 +403,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
     case Instruction::PHA: {
         read(PC); // the data is discarded
         wait_for_pulse();
-        push(AC);
+        SP = push(SP, AC);
     } break;
 
     case Instruction::PLA: {
@@ -426,7 +426,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
     case Instruction::PHP: {
         read(PC); // the data is discarded
         wait_for_pulse();
-        push(static_cast<mtl::u8>(SR));
+        SP = push(SP, static_cast<mtl::u8>(SR));
     } break;
 
     case Instruction::PLP: {
@@ -439,12 +439,12 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
     case Instruction::BRK:
         if (!SR.interrupt_disable) {
             wait_for_pulse();
-            push(static_cast<mtl::u8>(StatusRegister{ .break_ = true }));
-            interrupt(IRQ);
+            SP               = push(SP, static_cast<mtl::u8>(StatusRegister{ .break_ = true }));
+            std::tie(PC, SP) = interrupt(PC, SP, SR, IRQ);
         }
         break;
 
-    case Instruction::RTI: return_from_interrupt(); break;
+    case Instruction::RTI: std::tie(PC, SP, SR) = return_from_interrupt(PC, SP); break;
 
     case Instruction::LSR: {
         if (*addressing == Addressing::AbsoluteX) {
@@ -597,7 +597,7 @@ void CPU::reset() noexcept {
     PC             = make_word(pch, pcl);
 }
 
-mtl::u8 CPU::read(mtl::u16 address) noexcept {
+mtl::u8 CPU::read(const mtl::u16 address) noexcept {
     wait_for_pulse();
     return _memory[address];
 }
@@ -630,31 +630,34 @@ std::tuple<bool, bool, bool> CPU::compare(const mtl::u8 a, const mtl::u8 b) noex
     return { negative, carry, zero };
 }
 
-void CPU::push(const mtl::u8 byte) noexcept {
-    if (!_memory.write(make_word(mtl::u8(0x01), SP--), byte)) mtl::panic("Stack is read-only");
+mtl::u8 CPU::push(const mtl::u8 sp, const mtl::u8 byte) noexcept {
+    if (!_memory.write(make_word(mtl::u8(0x01), sp), byte)) mtl::panic("Stack is read-only");
+    return sp.prev();
 }
 
-void CPU::interrupt(mtl::u16 handler_address) noexcept {
-    read(PC); // this data is discarded
+std::pair<mtl::u16, mtl::u8>
+CPU::interrupt(const mtl::u16 pc, mtl::u8 sp, const StatusRegister sr, const mtl::u16 handler_address) noexcept {
+    read(pc); // this data is discarded
     wait_for_pulse();
-    push(high_byte(PC));
+    sp = push(sp, high_byte(pc));
     wait_for_pulse();
-    push(low_byte(PC));
+    sp = push(sp, low_byte(pc));
     wait_for_pulse();
-    push(static_cast<mtl::u8>(SR));
+    sp             = push(sp, static_cast<mtl::u8>(sr));
     const auto pcl = read(handler_address);
     const auto pch = read(handler_address.next());
-    PC             = make_word(pch, pcl);
+    return { make_word(pch, pcl), sp };
 }
 
-void CPU::return_from_interrupt() noexcept {
-    read(PC++);
+std::tuple<mtl::u16, mtl::u8, StatusRegister> CPU::return_from_interrupt(mtl::u16 pc, mtl::u8 sp) noexcept {
+    read(pc++);
     wait_for_pulse();
-    SP++;
-    SR             = read(make_word(mtl::u8(0x01), SP++));
-    const auto pcl = read(make_word(mtl::u8(0x01), SP++));
-    const auto pch = read(make_word(mtl::u8(0x01), SP++));
-    PC             = make_word(pch, pcl);
+    ++sp;
+    StatusRegister sr;
+    sr             = read(make_word(mtl::u8(0x01), sp++));
+    const auto pcl = read(make_word(mtl::u8(0x01), sp++));
+    const auto pch = read(make_word(mtl::u8(0x01), sp++));
+    return { make_word(pch, pcl), sp, sr };
 }
 
 mtl::u16 CPU::fetch_absolute_address_long(const mtl::u8 index) noexcept {

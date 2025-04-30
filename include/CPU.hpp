@@ -143,11 +143,38 @@ private:
      */
     [[nodiscard]] static std::tuple<bool, bool, bool> compare(mtl::u8 a, mtl::u8 b) noexcept;
 
-    void push(mtl::u8 byte) noexcept;
+    [[nodiscard]] mtl::u8 push(mtl::u8 sp, mtl::u8 byte) noexcept;
 
-    void interrupt(mtl::u16 handler_address) noexcept;
+    /**
+     * @break Jump to the interrupt handler
+     *
+     * Saves the current program counter and status register on the stack.
+     *
+     * @param pc Current program counter
+     * @param sp Current stack pointer
+     * @param sr Current status register
+     * @param handler_address Address where the low byte of the interrupt handler's address is stored.
+     *
+     * @return {PC, SP}
+     * @retvap PC New program counter pointing at the start of the interrupt handling routine
+     * @retval SP Updated stack pointer
+     */
+    [[nodiscard]] std::pair<mtl::u16, mtl::u8>
+    interrupt(mtl::u16 pc, mtl::u8 sp, StatusRegister sr, mtl::u16 handler_address) noexcept;
 
-    void return_from_interrupt() noexcept;
+    /**
+     * @brief Transfers from the stack the processor status and the program counter for the instruction
+     *        which was interrupted
+     *
+     * @param pc Current program counter
+     * @param sp Current stack pointer
+     *
+     * @return {PC, SP, SR}
+     * @retval PC Program counter of the interrupted instruction
+     * @retval SP Updated stack pointer
+     * @retval SR Status register before interrupt
+     */
+    [[nodiscard]] std::tuple<mtl::u16, mtl::u8, StatusRegister> return_from_interrupt(mtl::u16 pc, mtl::u8 sp) noexcept;
 
     [[nodiscard]] mtl::u16 fetch_absolute_address_long(mtl::u8 index) noexcept;
 
@@ -159,7 +186,7 @@ private:
      * @retval zero Is set if the value is zero, otherwise it is reset.
      * @retval negative Is set if the result has bit 7 on, otherwise it is reset.
      */
-    static std::tuple<mtl::u8, bool, bool> value_with_flags(mtl::u8 src) noexcept;
+    [[nodiscard]] static std::tuple<mtl::u8, bool, bool> value_with_flags(mtl::u8 src) noexcept;
 
     /**
      * @brief Program counter
