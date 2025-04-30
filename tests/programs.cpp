@@ -127,8 +127,9 @@ TEST_F(Program, Add16Bit) {
     data[H2] = mtl::u8(0x34);
 
     // execute the program
-    CPU cpu(std::chrono::nanoseconds(0), Memory(data));
-    cpu.start();
+    Clock clock(std::chrono::nanoseconds(0));
+    CPU cpu{ Memory(data) };
+    cpu.start(clock);
 
     // check the results
     EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT
@@ -187,8 +188,9 @@ TEST_F(Program, DecimalAddition) {
     data[ADDR_SECOND] = mtl::u8(0x14);
 
     // execute the program
-    CPU cpu(std::chrono::nanoseconds(0), Memory(data));
-    cpu.start();
+    Clock clock(std::chrono::nanoseconds(0));
+    CPU cpu{ Memory(data) };
+    cpu.start(clock);
 
     // check the results
     EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT
@@ -264,8 +266,9 @@ TEST_F(Program, Subtract16Bit) {
     data[H2] = mtl::u8(0x34);
 
     // execute the program
-    CPU cpu(std::chrono::nanoseconds(0), Memory(data));
-    cpu.start();
+    Clock clock(std::chrono::nanoseconds(0));
+    CPU cpu{ Memory(data) };
+    cpu.start(clock);
 
     // check the results
     EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT
@@ -324,8 +327,9 @@ TEST_F(Program, DecimalSubtract) {
     data[ADDR_SECOND] = mtl::u8(0x29);
 
     // execute the program
-    CPU cpu(std::chrono::nanoseconds(0), Memory(data));
-    cpu.start();
+    Clock clock(std::chrono::nanoseconds(0));
+    CPU cpu{ Memory(data) };
+    cpu.start(clock);
 
     // check the results
     EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT
@@ -370,8 +374,9 @@ TEST_F(Program, And) {
     auto [data, program_end] = assemble(code);
 
     // execute the program
-    CPU cpu(std::chrono::nanoseconds(0), Memory(data));
-    cpu.start();
+    Clock clock(std::chrono::nanoseconds(0));
+    CPU cpu{ Memory(data) };
+    cpu.start(clock);
 
     // check the results
     EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT
@@ -416,8 +421,9 @@ TEST_F(Program, Or) {
     auto [data, program_end] = assemble(code);
 
     // execute the program
-    CPU cpu(std::chrono::nanoseconds(0), Memory(data));
-    cpu.start();
+    Clock clock(std::chrono::nanoseconds(0));
+    CPU cpu{ Memory(data) };
+    cpu.start(clock);
 
     // check the results
     EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT
@@ -462,8 +468,9 @@ TEST_F(Program, Xor) {
     auto [data, program_end] = assemble(code);
 
     // execute the program
-    CPU cpu(std::chrono::nanoseconds(0), Memory(data));
-    cpu.start();
+    Clock clock(std::chrono::nanoseconds(0));
+    CPU cpu{ Memory(data) };
+    cpu.start(clock);
 
     // check the results
     EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT

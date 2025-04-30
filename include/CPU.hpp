@@ -30,14 +30,16 @@ public:
      */
     static constexpr mtl::u16 IRQ{ 0xFFFE };
 
-    explicit CPU(std::chrono::nanoseconds clock_period, Memory memory) noexcept;
+    explicit CPU(Memory memory) noexcept;
 
     /**
      * @brief Start the CPU
      *
+     * @param clock Pulse generator for the CPU.
+     *
      * It enters an endless loop executing instructions one by one.
      */
-    void start() noexcept;
+    void start(Clock &clock) noexcept;
 
     /**
      * @brief Reset the CPU to its initial state
@@ -134,7 +136,7 @@ private:
     /**
      * @brief Read a byte from a specified address of the memory
      *
-     * @pre Waits until the next high pulse arrives from @link _clock @endlink.
+     * @pre Waits until the next high pulse arrives from @p clock.
      *
      * @post Increments the cycle count.
      */
@@ -279,13 +281,6 @@ private:
      * @note All arithmetic operations update the Z, N, C and V flags.
      */
     StatusRegister SR{};
-
-    /**
-     * @brief Pulse generator of the CPU.
-     *
-     * Execution of the next instruction can only start when the pulse is high.
-     */
-    Clock _clock;
 
     /// @brief Memory used by the CPU
     Memory _memory;

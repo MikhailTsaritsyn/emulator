@@ -10,23 +10,21 @@
 #include <mtl/panic.hpp>
 
 namespace emulator::mos_6502 {
-CPU::CPU(const std::chrono::nanoseconds clock_period, Memory memory) noexcept
-        : _clock(clock_period),
-          _memory(std::move(memory)) {}
+CPU::CPU(Memory memory) noexcept : _memory(std::move(memory)) {}
 
-void CPU::start() noexcept {
+void CPU::start(Clock &clock) noexcept {
     auto prev_time = std::chrono::high_resolution_clock::now();
 
-    reset(_clock);
+    reset(clock);
 
     static constexpr size_t window = 100;
     while (!_terminate.test()) {
-        if (_non_maskable_interrupt_requested.test()) std::tie(PC, SP) = interrupt(PC, SP, SR, NMI, _clock);
-        if (_interrupt_requested.test() && !SR.interrupt_disable) std::tie(PC, SP) = interrupt(PC, SP, SR, IRQ, _clock);
+        if (_non_maskable_interrupt_requested.test()) std::tie(PC, SP) = interrupt(PC, SP, SR, NMI, clock);
+        if (_interrupt_requested.test() && !SR.interrupt_disable) std::tie(PC, SP) = interrupt(PC, SP, SR, IRQ, clock);
 
-        [[maybe_unused]] const auto opcode = read(PC++, _clock);
+        [[maybe_unused]] const auto opcode = read(PC++, clock);
 
-        if (!decode_and_execute(opcode, _clock)) {
+        if (!decode_and_execute(opcode, clock)) {
             std::cerr << std::format("Encountered an illegal opcode {:#04x} at address {:#06x}", opcode, PC.prev())
                       << std::endl;
             _terminate.test_and_set();
