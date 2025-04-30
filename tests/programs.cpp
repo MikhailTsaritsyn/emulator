@@ -129,11 +129,12 @@ TEST_F(Program, Add16Bit) {
     // execute the program
     Clock clock(std::chrono::nanoseconds(0));
     Memory memory{ data };
+    Registers registers{};
     CPU cpu{};
-    cpu.start(memory, clock);
+    cpu.start(memory, clock, registers);
 
     // check the results
-    EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT
+    EXPECT_EQ(registers.PC, program_end);                           // 1 for CLI and 1 for HLT
     EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
     EXPECT_EQ(memory[mtl::u16(L3)], 0x08);                          // (data[L1] + data[L2]) % 0x100
     EXPECT_EQ(memory[mtl::u16(H3)], 0x38);                          // data[H1] + data[H2] + carry
@@ -191,11 +192,12 @@ TEST_F(Program, DecimalAddition) {
     // execute the program
     Clock clock(std::chrono::nanoseconds(0));
     Memory memory{ data };
+    Registers registers{};
     CPU cpu{};
-    cpu.start(memory, clock);
+    cpu.start(memory, clock, registers);
 
     // check the results
-    EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT
+    EXPECT_EQ(registers.PC, program_end);                           // 1 for CLI and 1 for HLT
     EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
     EXPECT_EQ(memory[mtl::u16(ADDR_RESULT)], 0x93);                 // 79 + 14 = 93
 }
@@ -270,11 +272,12 @@ TEST_F(Program, Subtract16Bit) {
     // execute the program
     Clock clock(std::chrono::nanoseconds(0));
     Memory memory{ data };
+    Registers registers{};
     CPU cpu{};
-    cpu.start(memory, clock);
+    cpu.start(memory, clock, registers);
 
     // check the results
-    EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT
+    EXPECT_EQ(registers.PC, program_end);                           // 1 for CLI and 1 for HLT
     EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
     EXPECT_EQ(memory[mtl::u16(L3)], 0xE2);                          // (0x75 - 0x93) % 0x100
     EXPECT_EQ(memory[mtl::u16(H3)], 0xCE);                          // (0x03 - 0x34 - carry) % 0x100
@@ -332,11 +335,12 @@ TEST_F(Program, DecimalSubtract) {
     // execute the program
     Clock clock(std::chrono::nanoseconds(0));
     Memory memory{ data };
+    Registers registers{};
     CPU cpu{};
-    cpu.start(memory, clock);
+    cpu.start(memory, clock, registers);
 
     // check the results
-    EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT
+    EXPECT_EQ(registers.PC, program_end);                           // 1 for CLI and 1 for HLT
     EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
     EXPECT_EQ(memory[mtl::u16(ADDR_RESULT)], 0x15);         // 44 - 29 = 15
 }
@@ -380,11 +384,12 @@ TEST_F(Program, And) {
     // execute the program
     Clock clock(std::chrono::nanoseconds(0));
     Memory memory{ data };
+    Registers registers{};
     CPU cpu{};
-    cpu.start(memory, clock);
+    cpu.start(memory, clock, registers);
 
     // check the results
-    EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT
+    EXPECT_EQ(registers.PC, program_end);                           // 1 for CLI and 1 for HLT
     EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
     EXPECT_EQ(memory[mtl::u16(ADDR_RESULT)], 0b11000111);   // 0b11001111 & 0b111101111 = 0b11000111
 }
@@ -428,11 +433,12 @@ TEST_F(Program, Or) {
     // execute the program
     Clock clock(std::chrono::nanoseconds(0));
     Memory memory{ data };
+    Registers registers{};
     CPU cpu{};
-    cpu.start(memory, clock);
+    cpu.start(memory, clock, registers);
 
     // check the results
-    EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT
+    EXPECT_EQ(registers.PC, program_end);                // 1 for CLI and 1 for HLT
     EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
     EXPECT_EQ(memory[mtl::u16(ADDR_RESULT)], 0b11101111);   // 0b11100111 | 0b00001000 = 0b11101111
 }
@@ -476,11 +482,12 @@ TEST_F(Program, Xor) {
     // execute the program
     Clock clock(std::chrono::nanoseconds(0));
     Memory memory{ data };
+    Registers registers{};
     CPU cpu{};
-    cpu.start(memory, clock);
+    cpu.start(memory, clock, registers);
 
     // check the results
-    EXPECT_EQ(cpu.program_counter(), program_end);                // 1 for CLI and 1 for HLT
+    EXPECT_EQ(registers.PC, program_end);                // 1 for CLI and 1 for HLT
     EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
     EXPECT_EQ(memory[mtl::u16(ADDR_RESULT)], 0b01010000);             // 0b10101111 ^ 0b11111111 = 0b01010000
 }

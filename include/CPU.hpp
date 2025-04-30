@@ -40,15 +40,16 @@ public:
      *
      * @param memory
      * @param clock Pulse generator for the CPU.
+     * @param registers
      *
      * It enters an endless loop executing instructions one by one.
      */
-    void start(Memory &memory, Clock &clock) noexcept;
+    void start(Memory &memory, Clock &clock, Registers &registers) noexcept;
 
     /**
      * @brief Reset the CPU to its initial state
      */
-    void reset(Clock &clock, const Memory &memory) noexcept;
+    static void reset(Clock &clock, const Memory &memory, mtl::u16 &PC, mtl::u8 &SP, bool &interrupt_disable) noexcept;
 
     /**
      * @brief Terminate the execution of the CPU
@@ -56,8 +57,6 @@ public:
      * It is designed to be called from a thread other than that running the CPU.
      */
     void terminate() noexcept;
-
-    [[nodiscard]] mtl::u16 program_counter() const noexcept;
 
 private:
     /**
@@ -118,7 +117,7 @@ private:
     [[nodiscard]] static mtl::u16
     fetch_zero_page_address(const Memory &memory, mtl::u16 &pc, mtl::u8 index, Clock &clock) noexcept;
 
-    [[nodiscard]] bool decode_and_execute(mtl::u8 opcode, Clock &clock, Memory &memory);
+    [[nodiscard]] static bool decode_and_execute(mtl::u8 opcode, Clock &clock, Memory &memory, Registers &registers);
 
     /**
      * @brief Read a byte from a specified address of the memory
@@ -203,9 +202,6 @@ private:
      * @retval negative Is set if the result has bit 7 on, otherwise it is reset.
      */
     [[nodiscard]] static std::tuple<mtl::u8, bool, bool> value_with_flags(mtl::u8 src) noexcept;
-
-    /// All CPU registers
-    Registers _registers;
 
     /// @brief If @p true, the CPU must stop after completing the current operation
     std::atomic_flag _terminate = false;

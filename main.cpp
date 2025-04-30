@@ -12,7 +12,9 @@ void emulate(const std::chrono::nanoseconds clock_period, const std::chrono::nan
     std::ranges::fill(data, mtl::u8{ 0 });
     emulator::mos_6502::Memory memory{ data };
 
-    std::jthread thread{ [&cpu, &clock, &memory] { cpu.start(memory, clock); } };
+    emulator::mos_6502::Registers registers{};
+
+    std::jthread thread{ [&cpu, &clock, &memory, &registers] { cpu.start(memory, clock, registers); } };
     std::this_thread::sleep_for(time);
 
     std::cout << "Terminating..." << std::endl;
