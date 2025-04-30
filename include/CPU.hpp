@@ -13,6 +13,7 @@
 #include <tuple>
 
 // TODO: on_clock_pulse(Func &&func) wrapper?
+// TODO: instead of passing memory + PC pass iterator to the current byte?
 
 namespace emulator::mos_6502 {
 class CPU {
@@ -46,7 +47,7 @@ public:
     /**
      * @brief Reset the CPU to its initial state
      */
-    void reset(Clock &clock) noexcept;
+    void reset(Clock &clock, const Memory &memory) noexcept;
 
     /**
      * @brief Terminate the execution of the CPU
@@ -99,29 +100,34 @@ private:
      * @brief Determine the address of the current instruction's argument
      *
      * @param[in]      addressing Addressing mode of the instruction
+     * @param[in]      memory Memory used by the CPU
      * @param[in, out] pc The program counter
      * @param[in]      x Index register X
      * @param[in]      y Index register Y
      * @param[in, out] clock Emulated CPU clock
      */
-    [[nodiscard]] Address
-    fetch_address(Addressing addressing, mtl::u16 &pc, mtl::u8 x, mtl::u8 y, Clock &clock) noexcept;
+    [[nodiscard]] Address fetch_address(
+            Addressing addressing, const Memory &memory, mtl::u16 &pc, mtl::u8 x, mtl::u8 y, Clock &clock) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_absolute_address(mtl::u16 &pc, Clock &clock) noexcept;
+    [[nodiscard]] static mtl::u16 fetch_absolute_address(const Memory &memory, mtl::u16 &pc, Clock &clock) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_absolute_address(mtl::u16 &pc, mtl::u8 index, Clock &clock) noexcept;
+    [[nodiscard]] static mtl::u16
+    fetch_absolute_address(const Memory &memory, mtl::u16 &pc, mtl::u8 index, Clock &clock) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_indirect_address(mtl::u16 &pc, Clock &clock) noexcept;
+    [[nodiscard]] static mtl::u16 fetch_indirect_address(const Memory &memory, mtl::u16 &pc, Clock &clock) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_indexed_indirect_address(mtl::u16 &pc, Clock &clock) noexcept;
+    [[nodiscard]] mtl::u16
+    fetch_indexed_indirect_address(const Memory &memory, mtl::u16 &pc, Clock &clock) const noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_indirect_indexed_address(mtl::u16 &pc, Clock &clock) noexcept;
+    [[nodiscard]] mtl::u16
+    fetch_indirect_indexed_address(const Memory &memory, mtl::u16 &pc, Clock &clock) const noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_zero_page_address(mtl::u16 &pc, Clock &clock) noexcept;
+    [[nodiscard]] static mtl::u16 fetch_zero_page_address(const Memory &memory, mtl::u16 &pc, Clock &clock) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_zero_page_address(mtl::u16 &pc, mtl::u8 index, Clock &clock) noexcept;
+    [[nodiscard]] static mtl::u16
+    fetch_zero_page_address(const Memory &memory, mtl::u16 &pc, mtl::u8 index, Clock &clock) noexcept;
 
-    [[nodiscard]] bool decode_and_execute(mtl::u8 opcode, Clock &clock);
+    [[nodiscard]] bool decode_and_execute(mtl::u8 opcode, Clock &clock, Memory &memory);
 
     /**
      * @brief Read a byte from a specified address of the memory
@@ -130,13 +136,14 @@ private:
      *
      * @post Increments the cycle count.
      */
-    mtl::u8 read(mtl::u16 address, Clock &clock) noexcept;
+    static mtl::u8 read(const Memory &memory, mtl::u16 address, Clock &clock) noexcept;
 
     /**
      * @brief Jump by a signed offset
      *
      * The offset is read at the current program counter.
      *
+     * @param[in]      memory Memory used by the CPU
      * @param[in]      pc The current program counter.
      * @param[in]      condition Whether to perform the jump.
      *                           If @c false, continue execution at the current program counter.
@@ -144,7 +151,7 @@ private:
      *
      * @return The new program counter value
      */
-    [[nodiscard]] mtl::u16 branch(mtl::u16 pc, bool condition, Clock &clock) noexcept;
+    [[nodiscard]] static mtl::u16 branch(const Memory &memory, mtl::u16 pc, bool condition, Clock &clock) noexcept;
 
     /**
      * @return {negative, carry, zero}
@@ -158,6 +165,7 @@ private:
      *
      * Saves the current program counter and status register on the stack.
      *
+     * @param[in]      memory Memory used by the CPU
      * @param[in]      pc Current program counter
      * @param[in]      sp Current stack pointer
      * @param[in]      sr Current status register
@@ -168,13 +176,18 @@ private:
      * @retvap PC New program counter pointing at the start of the interrupt handling routine
      * @retval SP Updated stack pointer
      */
-    [[nodiscard]] std::pair<mtl::u16, mtl::u8>
-    interrupt(mtl::u16 pc, mtl::u8 sp, StatusRegister sr, mtl::u16 handler_address, Clock &clock) noexcept;
+    [[nodiscard]] std::pair<mtl::u16, mtl::u8> interrupt(const Memory &memory,
+                                                         mtl::u16 pc,
+                                                         mtl::u8 sp,
+                                                         StatusRegister sr,
+                                                         mtl::u16 handler_address,
+                                                         Clock &clock) noexcept;
 
     /**
      * @brief Transfers from the stack the processor status and the program counter for the instruction
      *        which was interrupted
      *
+     * @param[in]      memory Memory used by the CPU
      * @param[in]      pc Current program counter
      * @param[in]      sp Current stack pointer
      * @param[in, out] clock Emulated CPU clock
@@ -184,10 +197,11 @@ private:
      * @retval SP Updated stack pointer
      * @retval SR Status register before interrupt
      */
-    [[nodiscard]] std::tuple<mtl::u16, mtl::u8, StatusRegister>
-    return_from_interrupt(mtl::u16 pc, mtl::u8 sp, Clock &clock) noexcept;
+    [[nodiscard]] static std::tuple<mtl::u16, mtl::u8, StatusRegister>
+    return_from_interrupt(const Memory &memory, mtl::u16 pc, mtl::u8 sp, Clock &clock) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_absolute_address_long(mtl::u16 &pc, mtl::u8 index, Clock &clock) noexcept;
+    [[nodiscard]] static mtl::u16
+    fetch_absolute_address_long(const Memory &memory, mtl::u16 &pc, mtl::u8 index, Clock &clock) noexcept;
 
     /**
      * @param src The new value
