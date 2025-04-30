@@ -255,21 +255,21 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
         else mtl::panic("Unsupported addressing mode for JMP");
     } break;
 
-    case Instruction::BMI: PC = branch(SR.negative); break;
+    case Instruction::BMI: PC = branch(PC, SR.negative); break;
 
-    case Instruction::BPL: PC = branch(!SR.negative); break;
+    case Instruction::BPL: PC = branch(PC, !SR.negative); break;
 
-    case Instruction::BCC: PC = branch(!SR.carry); break;
+    case Instruction::BCC: PC = branch(PC, !SR.carry); break;
 
-    case Instruction::BCS: PC = branch(SR.carry); break;
+    case Instruction::BCS: PC = branch(PC, SR.carry); break;
 
-    case Instruction::BEQ: PC = branch(SR.zero); break;
+    case Instruction::BEQ: PC = branch(PC, SR.zero); break;
 
-    case Instruction::BNE: PC = branch(!SR.zero); break;
+    case Instruction::BNE: PC = branch(PC, !SR.zero); break;
 
-    case Instruction::BVS: PC = branch(SR.overflow); break;
+    case Instruction::BVS: PC = branch(PC, SR.overflow); break;
 
-    case Instruction::BVC: PC = branch(!SR.overflow); break;
+    case Instruction::BVC: PC = branch(PC, !SR.overflow); break;
 
     case Instruction::CMP: {
         mtl::u8 memory;
@@ -602,14 +602,14 @@ mtl::u8 CPU::read(const mtl::u16 address) noexcept {
     return _memory[address];
 }
 
-mtl::u16 CPU::branch(const bool condition) noexcept {
+mtl::u16 CPU::branch(mtl::u16 pc, const bool condition) noexcept {
     // Assume PC = 0x0101
-    const auto offset = std::bit_cast<mtl::i8>(read(PC++)); // assume -0x50
-    if (!condition) return PC;
+    const auto offset = std::bit_cast<mtl::i8>(read(pc++)); // assume -0x50
+    if (!condition) return pc;
 
-    read(PC);                                                             // from PC = 0x0102, this data is ignored
-    const auto [pcl, overflow] = add_with_overflow(low_byte(PC), offset); // 0xB2
-    auto pch                   = high_byte(PC);                           // 0x01
+    read(pc);                                                             // from PC = 0x0102, this data is ignored
+    const auto [pcl, overflow] = add_with_overflow(low_byte(pc), offset); // 0xB2
+    auto pch                   = high_byte(pc);                           // 0x01
 
     switch (overflow) {
     case SignedOverflow::None: return make_word(pch, pcl);

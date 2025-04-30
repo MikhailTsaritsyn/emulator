@@ -11,8 +11,6 @@
 #include <atomic>
 #include <tuple>
 
-// TODO: wait_for_clock() wrapper?
-
 namespace emulator::mos_6502 {
 class CPU {
 public:
@@ -136,7 +134,18 @@ private:
      */
     mtl::u8 read(mtl::u16 address) noexcept;
 
-    [[nodiscard]] mtl::u16 branch(bool condition) noexcept;
+    /**
+     * @brief Jump by a signed offset
+     *
+     * The offset is read at the current program counter.
+     *
+     * @param pc The current program counter.
+     * @param condition Whether to perform the jump.
+     *                  If @c false, continue execution at the current program counter.
+     *
+     * @return The new program counter value
+     */
+    [[nodiscard]] mtl::u16 branch(mtl::u16 pc, bool condition) noexcept;
 
     /**
      * @return {negative, carry, zero}
