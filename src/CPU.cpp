@@ -61,34 +61,34 @@ void CPU::wait_for_pulse() noexcept {
     _cycle++;
 }
 
-CPU::Address CPU::fetch_address(const Addressing addressing) noexcept {
+CPU::Address CPU::fetch_address(const Addressing addressing, mtl::u16 &pc, const mtl::u8 x, const mtl::u8 y) noexcept {
     switch (addressing) {
     case Addressing::Accumulator: return accumulator_t{};
-    case Addressing::Absolute: return fetch_absolute_address();
-    case Addressing::AbsoluteX: return fetch_absolute_address(X);
-    case Addressing::AbsoluteY: return fetch_absolute_address(Y);
+    case Addressing::Absolute: return fetch_absolute_address(pc);
+    case Addressing::AbsoluteX: return fetch_absolute_address(pc, x);
+    case Addressing::AbsoluteY: return fetch_absolute_address(pc, y);
     case Addressing::Implicit: return implicit_t{};
     case Addressing::Immediate: return immediate_t{};
-    case Addressing::IndexedIndirect: return fetch_indexed_indirect_address();
-    case Addressing::IndirectIndexed: return fetch_indirect_indexed_address();
+    case Addressing::IndexedIndirect: return fetch_indexed_indirect_address(pc);
+    case Addressing::IndirectIndexed: return fetch_indirect_indexed_address(pc);
     case Addressing::Relative: return relative_t{};
-    case Addressing::ZeroPage: return fetch_zero_page_address();
-    case Addressing::ZeroPageX: return fetch_zero_page_address(X);
-    case Addressing::ZeroPageY: return fetch_zero_page_address(Y);
-    case Addressing::Indirect: return fetch_indirect_address();
+    case Addressing::ZeroPage: return fetch_zero_page_address(pc);
+    case Addressing::ZeroPageX: return fetch_zero_page_address(pc, x);
+    case Addressing::ZeroPageY: return fetch_zero_page_address(pc, y);
+    case Addressing::Indirect: return fetch_indirect_address(pc);
     }
     std::unreachable();
 }
 
-mtl::u16 CPU::fetch_absolute_address() noexcept {
-    const auto address_low  = read(PC++);
-    const auto address_high = read(PC++);
+mtl::u16 CPU::fetch_absolute_address(mtl::u16 &pc) noexcept {
+    const auto address_low  = read(pc++);
+    const auto address_high = read(pc++);
     return make_word(address_high, address_low);
 }
 
-mtl::u16 CPU::fetch_absolute_address(const mtl::u8 index) noexcept {
-    const auto bal                     = read(PC++);
-    const auto bah                     = read(PC++);
+mtl::u16 CPU::fetch_absolute_address(mtl::u16 &pc, const mtl::u8 index) noexcept {
+    const auto bal                     = read(pc++);
+    const auto bah                     = read(pc++);
     const auto [bal_updated, overflow] = add_with_overflow(bal, index);
     const auto address                 = make_word(bah, bal_updated);
     if (!overflow) return address;
@@ -96,25 +96,25 @@ mtl::u16 CPU::fetch_absolute_address(const mtl::u8 index) noexcept {
     return make_word(bah.next(), bal_updated);
 }
 
-mtl::u16 CPU::fetch_indirect_address() noexcept {
-    const auto ial = read(PC++);
-    const auto iah = read(PC++);
-    PC             = make_word(iah, ial);
-    const auto adl = read(PC++);
-    const auto adh = read(PC);
+mtl::u16 CPU::fetch_indirect_address(mtl::u16 &pc) noexcept {
+    const auto ial = read(pc++);
+    const auto iah = read(pc++);
+    pc             = make_word(iah, ial);
+    const auto adl = read(pc++);
+    const auto adh = read(pc);
     return make_word(adh, adl);
 }
 
-mtl::u16 CPU::fetch_indexed_indirect_address() noexcept {
-    const auto bal = read(PC++);
+mtl::u16 CPU::fetch_indexed_indirect_address(mtl::u16 &pc) noexcept {
+    const auto bal = read(pc++);
     read(mtl::u16(bal));
     const auto adl = read(make_word(mtl::u8(0), bal + X));
     const auto adh = read(make_word(mtl::u8(0), (bal + X).next()));
     return make_word(adh, adl);
 }
 
-mtl::u16 CPU::fetch_indirect_indexed_address() noexcept {
-    const auto ial                     = read(PC++);
+mtl::u16 CPU::fetch_indirect_indexed_address(mtl::u16 &pc) noexcept {
+    const auto ial                     = read(pc++);
     const auto bal                     = read(mtl::u16(ial));
     const auto bah                     = read(make_word(mtl::u8(0), ial.next()));
     const auto [bal_updated, overflow] = add_with_overflow(bal, Y);
@@ -124,10 +124,10 @@ mtl::u16 CPU::fetch_indirect_indexed_address() noexcept {
     return make_word(bah.next(), bal_updated);
 }
 
-mtl::u16 CPU::fetch_zero_page_address() noexcept { return mtl::u16(read(PC++)); }
+mtl::u16 CPU::fetch_zero_page_address(mtl::u16 &pc) noexcept { return mtl::u16(read(pc++)); }
 
-mtl::u16 CPU::fetch_zero_page_address(const mtl::u8 index) noexcept {
-    const auto adl = read(PC++);
+mtl::u16 CPU::fetch_zero_page_address(mtl::u16 &pc, const mtl::u8 index) noexcept {
+    const auto adl = read(pc++);
     read(mtl::u16(adl)); // This data is ignored
     return make_word(mtl::u8(0), adl + index);
 }
@@ -141,7 +141,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
 
     switch (*instruction) {
     case Instruction::LDA: {
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
+        if (const auto address = fetch_address(*addressing, PC, X, Y); std::holds_alternative<immediate_t>(address))
             std::tie(AC, SR.zero, SR.negative) = value_with_flags(read(PC++));
         else if (std::holds_alternative<mtl::u16>(address))
             std::tie(AC, SR.zero, SR.negative) = value_with_flags(read(std::get<mtl::u16>(address)));
@@ -149,14 +149,14 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
     } break;
 
     case Instruction::STA: {
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<mtl::u16>(address)) {
+        if (const auto address = fetch_address(*addressing, PC, X, Y); std::holds_alternative<mtl::u16>(address)) {
             wait_for_pulse();
             _memory.write(std::get<mtl::u16>(address), AC);
         } else mtl::panic("Unsupported addressing mode for STA");
     } break;
 
     case Instruction::ADC: {
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
+        if (const auto address = fetch_address(*addressing, PC, X, Y); std::holds_alternative<immediate_t>(address)) {
             mtl::u8 result;
             if (SR.decimal) std::tie(result, SR.carry, SR.overflow) = ALU::add_decimal(AC, read(PC++), SR.carry);
             else std::tie(result, SR.carry, SR.overflow) = ALU::add_binary(AC, read(PC++), SR.carry);
@@ -171,7 +171,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
     } break;
 
     case Instruction::SBC: {
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
+        if (const auto address = fetch_address(*addressing, PC, X, Y); std::holds_alternative<immediate_t>(address)) {
             mtl::u8 result;
             if (SR.decimal)
                 std::tie(result, SR.carry, SR.overflow) = ALU::subtract_decimal(AC, read(PC++), SR.carry);
@@ -188,7 +188,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
     } break;
 
     case Instruction::AND: {
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
+        if (const auto address = fetch_address(*addressing, PC, X, Y); std::holds_alternative<immediate_t>(address)) {
             std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC & read(PC++));
         } else if (std::holds_alternative<mtl::u16>(address)) {
             const auto arg = read(std::get<mtl::u16>(address));
@@ -197,7 +197,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
     } break;
 
     case Instruction::ORA: {
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
+        if (const auto address = fetch_address(*addressing, PC, X, Y); std::holds_alternative<immediate_t>(address)) {
             std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC | read(PC++));
         } else if (std::holds_alternative<mtl::u16>(address)) {
             const auto arg = read(std::get<mtl::u16>(address));
@@ -206,7 +206,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
     } break;
 
     case Instruction::EOR: {
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address)) {
+        if (const auto address = fetch_address(*addressing, PC, X, Y); std::holds_alternative<immediate_t>(address)) {
             std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC ^ read(PC++));
         } else if (std::holds_alternative<mtl::u16>(address)) {
             const auto arg = read(std::get<mtl::u16>(address));
@@ -250,7 +250,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
     } break;
 
     case Instruction::JMP: {
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<mtl::u16>(address))
+        if (const auto address = fetch_address(*addressing, PC, X, Y); std::holds_alternative<mtl::u16>(address))
             PC = std::get<mtl::u16>(address);
         else mtl::panic("Unsupported addressing mode for JMP");
     } break;
@@ -273,7 +273,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
 
     case Instruction::CMP: {
         mtl::u8 memory;
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
+        if (const auto address = fetch_address(*addressing, PC, X, Y); std::holds_alternative<immediate_t>(address))
             memory = read(PC++);
         else if (std::holds_alternative<mtl::u16>(address)) memory = read(std::get<mtl::u16>(address));
         else mtl::panic("Unsupported addressing mode for CMP");
@@ -282,7 +282,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
     } break;
 
     case Instruction::BIT: {
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<mtl::u16>(address)) {
+        if (const auto address = fetch_address(*addressing, PC, X, Y); std::holds_alternative<mtl::u16>(address)) {
             const auto result = static_cast<uint8_t>(AC & read(std::get<mtl::u16>(address)));
             SR.negative       = result & 0x80;
             SR.overflow       = result & 0x40;
@@ -291,7 +291,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
     } break;
 
     case Instruction::LDX: {
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
+        if (const auto address = fetch_address(*addressing, PC, X, Y); std::holds_alternative<immediate_t>(address))
             std::tie(X, SR.zero, SR.negative) = value_with_flags(read(PC++));
         else if (std::holds_alternative<mtl::u16>(address))
             std::tie(X, SR.zero, SR.negative) = value_with_flags(read(std::get<mtl::u16>(address)));
@@ -299,7 +299,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
     } break;
 
     case Instruction::LDY: {
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
+        if (const auto address = fetch_address(*addressing, PC, X, Y); std::holds_alternative<immediate_t>(address))
             std::tie(X, SR.zero, SR.negative) = value_with_flags(read(PC++));
         else if (std::holds_alternative<mtl::u16>(address))
             std::tie(X, SR.zero, SR.negative) = value_with_flags(read(std::get<mtl::u16>(address)));
@@ -307,13 +307,13 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
     } break;
 
     case Instruction::STX: {
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<mtl::u16>(address))
+        if (const auto address = fetch_address(*addressing, PC, X, Y); std::holds_alternative<mtl::u16>(address))
             _memory.write(std::get<mtl::u16>(address), X);
         else mtl::panic("Unsupported addressing mode for STX");
     } break;
 
     case Instruction::STY: {
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<mtl::u16>(address))
+        if (const auto address = fetch_address(*addressing, PC, X, Y); std::holds_alternative<mtl::u16>(address))
             _memory.write(std::get<mtl::u16>(address), Y);
         else mtl::panic("Unsupported addressing mode for STY");
     } break;
@@ -340,7 +340,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
 
     case Instruction::CPX: {
         mtl::u8 memory;
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
+        if (const auto address = fetch_address(*addressing, PC, X, Y); std::holds_alternative<immediate_t>(address))
             memory = read(PC++);
         else if (std::holds_alternative<mtl::u16>(address)) memory = read(std::get<mtl::u16>(address));
         else mtl::panic("Unsupported addressing mode for CPX");
@@ -350,7 +350,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
 
     case Instruction::CPY: {
         mtl::u8 memory;
-        if (const auto address = fetch_address(*addressing); std::holds_alternative<immediate_t>(address))
+        if (const auto address = fetch_address(*addressing, PC, X, Y); std::holds_alternative<immediate_t>(address))
             memory = read(PC++);
         else if (std::holds_alternative<mtl::u16>(address)) memory = read(std::get<mtl::u16>(address));
         else mtl::panic("Unsupported addressing mode for CPY");
@@ -456,7 +456,8 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
             wait_for_pulse();
             std::tie(result, SR.zero, SR.negative) = value_with_flags(result);
             _memory.write(address, result);
-        } else if (const auto address = fetch_address(*addressing); std::holds_alternative<accumulator_t>(address)) {
+        } else if (const auto address = fetch_address(*addressing, PC, X, Y);
+                   std::holds_alternative<accumulator_t>(address)) {
             wait_for_pulse();
             std::tie(AC, SR.carry)             = ALU::shift_right(AC);
             std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC);
@@ -481,7 +482,8 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
             wait_for_pulse();
             std::tie(result, SR.zero, SR.negative) = value_with_flags(result);
             _memory.write(address, result);
-        } else if (const auto address = fetch_address(*addressing); std::holds_alternative<accumulator_t>(address)) {
+        } else if (const auto address = fetch_address(*addressing, PC, X, Y);
+                   std::holds_alternative<accumulator_t>(address)) {
             wait_for_pulse();
             std::tie(AC, SR.carry)             = shift_left(AC, 1);
             std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC);
@@ -506,7 +508,8 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
             wait_for_pulse();
             std::tie(result, SR.zero, SR.negative) = value_with_flags(result);
             _memory.write(address, result);
-        } else if (const auto address = fetch_address(*addressing); std::holds_alternative<accumulator_t>(address)) {
+        } else if (const auto address = fetch_address(*addressing, PC, X, Y);
+                   std::holds_alternative<accumulator_t>(address)) {
             wait_for_pulse();
             std::tie(AC, SR.carry)             = ALU::rotate_left(AC, SR.carry);
             std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC);
@@ -531,7 +534,8 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
             wait_for_pulse();
             std::tie(result, SR.zero, SR.negative) = value_with_flags(result);
             _memory.write(address, result);
-        } else if (const auto address = fetch_address(*addressing); std::holds_alternative<accumulator_t>(address)) {
+        } else if (const auto address = fetch_address(*addressing, PC, X, Y);
+                   std::holds_alternative<accumulator_t>(address)) {
             wait_for_pulse();
             std::tie(AC, SR.carry)             = ALU::rotate_right(AC, SR.carry);
             std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC);
@@ -553,7 +557,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
             wait_for_pulse();
             wait_for_pulse();
             _memory.write(address, memory.next());
-        } else if (const auto address = fetch_address(*addressing); std::holds_alternative<mtl::u16>(address)) {
+        } else if (const auto address = fetch_address(*addressing, PC, X, Y); std::holds_alternative<mtl::u16>(address)) {
             const auto memory = read(std::get<mtl::u16>(address));
             wait_for_pulse();
             wait_for_pulse();
@@ -568,7 +572,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode) {
             wait_for_pulse();
             wait_for_pulse();
             _memory.write(address, memory.prev());
-        } else if (const auto address = fetch_address(*addressing); std::holds_alternative<mtl::u16>(address)) {
+        } else if (const auto address = fetch_address(*addressing, PC, X, Y); std::holds_alternative<mtl::u16>(address)) {
             const auto memory = read(std::get<mtl::u16>(address));
             wait_for_pulse();
             wait_for_pulse();

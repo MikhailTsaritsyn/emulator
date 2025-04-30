@@ -4,6 +4,7 @@
 
 #ifndef EMULATOR_MOS_6502_CPU_HPP
 #define EMULATOR_MOS_6502_CPU_HPP
+#include "ALU.hpp"
 #include "Clock.hpp"
 #include "Memory.hpp"
 #include "Opcode.hpp"
@@ -103,25 +104,28 @@ private:
     void wait_for_pulse() noexcept;
 
     /**
-     * @brief Determine the address of the argument of the current instruction
+     * @brief Determine the address of the current instruction's argument
      *
      * @param addressing Addressing mode of the instruction
+     * @param pc The program counter
+     * @param x Index register X
+     * @param y Index register Y
      */
-    [[nodiscard]] Address fetch_address(Addressing addressing) noexcept;
+    [[nodiscard]] Address fetch_address(Addressing addressing, mtl::u16 &pc, mtl::u8 x, mtl::u8 y) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_absolute_address() noexcept;
+    [[nodiscard]] mtl::u16 fetch_absolute_address(mtl::u16 &pc) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_absolute_address(mtl::u8 index) noexcept;
+    [[nodiscard]] mtl::u16 fetch_absolute_address(mtl::u16 &pc, mtl::u8 index) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_indirect_address() noexcept;
+    [[nodiscard]] mtl::u16 fetch_indirect_address(mtl::u16 &pc) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_indexed_indirect_address() noexcept;
+    [[nodiscard]] mtl::u16 fetch_indexed_indirect_address(mtl::u16 &pc) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_indirect_indexed_address() noexcept;
+    [[nodiscard]] mtl::u16 fetch_indirect_indexed_address(mtl::u16 &pc) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_zero_page_address() noexcept;
+    [[nodiscard]] mtl::u16 fetch_zero_page_address(mtl::u16 &pc) noexcept;
 
-    [[nodiscard]] mtl::u16 fetch_zero_page_address(mtl::u8 index) noexcept;
+    [[nodiscard]] mtl::u16 fetch_zero_page_address(mtl::u16 &pc, mtl::u8 index) noexcept;
 
     [[nodiscard]] bool decode_and_execute(mtl::u8 opcode);
 
