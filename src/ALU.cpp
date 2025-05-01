@@ -5,7 +5,6 @@
 #include "ALU.hpp"
 
 #include <cassert>
-#include <limits>
 #include <utility>
 
 namespace emulator::mos_6502::ALU {
@@ -13,13 +12,8 @@ namespace internal {
 /**
  * @brief Convert a binary-represented decimal to its value
  *
- * The binary representation of a decimal works as follows:
- * - the first four bits carry the high binary digits,
- * - the last four bits carry the low binary digit.
- * Thus, an 8-bit binary integer can represent decimals from 0 to 99 inclusively.
- *
- * For example, binary 0b01111001 represents a decimal 79, and a binary 0b00010100 represents a decimal 14.
- * Therefore, the function returns {7, 9} and {1, 4} correspondingly.
+ * Decimal encoding is described in @link add_decimal @endlink.
+ * The function returns {7, 9} and {1, 4} for 0x79 and 0x14 correspondingly.
  */
 [[nodiscard]] constexpr std::pair<mtl::u8, mtl::u8> decode_decimal(const mtl::u8 binary) noexcept {
     const auto low_digit  = binary & mtl::u8(0x0f);
@@ -56,64 +50,6 @@ namespace internal {
 }
 
 /**
- * @brief Add two binary-coded unsigned decimal 8-bit integers with carry
- *
- * Each of the operands is considered to be a binary-codd decimal as described in @link decode_decimal @endlink.
- *
- * @param[in] a The first number
- * @param[in] b The second number
- * @param[in, out] carry Its initial value is added to the result.
- *                       If the result is greater than 99, the carry is set, and reset otherwise.
- *
- * @return Binary-coded decimal result modulo 100
- */
-[[nodiscard]] constexpr mtl::u8 add_decimal(const mtl::u8 a, const mtl::u8 b, bool &carry) noexcept {
-    const auto [high_digit_a, low_digit_a] = decode_decimal(a);
-    const auto [high_digit_b, low_digit_b] = decode_decimal(b);
-
-    const auto low_digit_sum  = add_decimal_digits(low_digit_a, low_digit_b, carry);
-    const auto high_digit_sum = add_decimal_digits(high_digit_a, high_digit_b, carry);
-
-    return encode_decimal(high_digit_sum, low_digit_sum);
-}
-
-/**
- * @brief Add two unsigned 8-bit integers with carry
- *
- * @param[in] a The first number
- * @param[in] b The second number
- * @param[in, out] carry Its initial value is added to the result.
- *                       If the result is greater than 255, the carry is set, and reset otherwise.
- *
- * @return Potentially wrapped unsigned 8-bit result
- *
- * @post If the result is greater than 255, it is wrapped around zero.
- */
-[[nodiscard]] constexpr mtl::u8 add_binary(const mtl::u8 a, const mtl::u8 b, bool &carry) noexcept {
-    const auto [tmp, overflow1]    = add_with_overflow(a, b);
-    const auto [result, overflow2] = add_with_overflow(tmp, carry ? mtl::u8(1) : mtl::u8(0));
-    carry                          = overflow1 || overflow2;
-    return result;
-}
-
-/**
- * @brief Subtract two unsigned 8-bit integers with borrow
- *
- * @param[in] a The number to subtract from
- * @param[in] b The number to subtract
- * @param[in, out] borrow Its initial value is subtracted the result.
- *                        If the result is negative, the borrow is set, and reset otherwise.
- *
- * @return Unsigned 8-bit result modulo 256
- */
-[[nodiscard]] constexpr mtl::u8 subtract_binary(const mtl::u8 a, const mtl::u8 b, bool &borrow) noexcept {
-    const auto [tmp, overflow1]    = sub_with_overflow(a, b);
-    const auto [result, overflow2] = sub_with_overflow(tmp, borrow ? mtl::u8(1) : mtl::u8(0));
-    borrow                         = overflow1 || overflow2;
-    return result;
-}
-
-/**
  * @brief Subtract two numbers in range [0, 9] inclusively with borrow
  *
  * @param[in] a The number to subtract from
@@ -133,113 +69,59 @@ namespace internal {
     return ((result + mtl::i8(10)) % mtl::i8(10)).unsafe_cast<uint8_t>();
 }
 
-/**
- * @brief Subtract two binary-coded unsigned decimal 8-bit integers with borrow
- *
- * Each of the operands is considered to be a binary-codd decimal as described in @link decode_decimal @endlink.
- *
- * @param[in] a The number to subtract from
- * @param[in] b The number to subtract
- * @param[in, out] borrow Its initial value is subtracted from the result.
- *                        If the result is negative, the carry is set, and reset otherwise.
- *
- * @return Binary-coded decimal result modulo 100
- */
-[[nodiscard]] constexpr mtl::u8 subtract_decimal(const mtl::u8 a, const mtl::u8 b, bool &borrow) noexcept {
-    const auto [high_digit_a, low_digit_a] = decode_decimal(a);
-    const auto [high_digit_b, low_digit_b] = decode_decimal(b);
-
-    const auto low_digit_sum  = subtract_decimal_digits(low_digit_a, low_digit_b, borrow);
-    const auto high_digit_sum = subtract_decimal_digits(high_digit_a, high_digit_b, borrow);
-
-    return encode_decimal(high_digit_sum, low_digit_sum);
+[[nodiscard]] constexpr bool is_sign_bit_different(const mtl::u8 a, const mtl::u8 b) noexcept {
+    return (a & mtl::u8(0x80)) != (b & mtl::u8(0x80));
 }
 } // namespace internal
 
-mtl::u8 add(const mtl::u8 a, const mtl::u8 b, StatusRegister &sr) noexcept {
-    bool carry        = sr.carry; // bit-field sr.carry cannot be used as an in-out boolean
-    const auto result = sr.decimal ? internal::add_decimal(a, b, carry) : internal::add_binary(a, b, carry);
-
-    sr.carry    = carry;
-    sr.overflow = (result & mtl::u8(0x80)) != (a & mtl::u8(0x80)); // Compare the sign bits
-    sr.negative = (result & mtl::u8(0x80)) != 0;
-    sr.zero     = result == 0;
-
-    return result;
+std::tuple<mtl::u8, bool, bool> add_binary(const mtl::u8 lhs, const mtl::u8 rhs, const bool carry) noexcept {
+    const auto [tmp, overflow1]    = add_with_overflow(lhs, rhs);
+    const auto [result, overflow2] = add_with_overflow(tmp, carry ? mtl::u8(1) : mtl::u8(0));
+    return { result, overflow1 || overflow2, internal::is_sign_bit_different(result, lhs) };
 }
 
-mtl::u8 subtract(const mtl::u8 a, const mtl::u8 b, StatusRegister &sr) noexcept {
-    bool borrow       = !sr.carry;
-    const auto result = sr.decimal ? internal::subtract_decimal(a, b, borrow) : internal::subtract_binary(a, b, borrow);
+std::tuple<mtl::u8, bool, bool> add_decimal(const mtl::u8 lhs, const mtl::u8 rhs, bool carry) noexcept {
+    const auto [high_digit_lhs, low_digit_lhs] = internal::decode_decimal(lhs);
+    const auto [high_digit_rhs, low_digit_rhs] = internal::decode_decimal(rhs);
 
-    sr.carry    = !borrow;
-    sr.overflow = (result & mtl::u8(0x80)) != (a & mtl::u8(0x80)); // Compare the sign bits
-    sr.negative = (result & mtl::u8(0x80)) != 0;
-    sr.zero     = result == 0;
+    const auto low_digit_sum  = internal::add_decimal_digits(low_digit_lhs, low_digit_rhs, carry);
+    const auto high_digit_sum = internal::add_decimal_digits(high_digit_lhs, high_digit_rhs, carry);
 
-    return result;
+    const auto result = internal::encode_decimal(high_digit_sum, low_digit_sum);
+    return { result, carry, internal::is_sign_bit_different(result, lhs) };
 }
 
-mtl::u8 logical_and(const mtl::u8 a, const mtl::u8 b, StatusRegister &sr) noexcept {
-    const auto result = a & b;
-
-    sr.negative = (result & mtl::u8(0x80)) != 0;
-    sr.zero     = result == 0;
-    return result;
+std::tuple<mtl::u8, bool, bool> subtract_binary(const mtl::u8 lhs, const mtl::u8 rhs, const bool carry) noexcept {
+    const auto [tmp, overflow1]    = sub_with_overflow(lhs, rhs);
+    const auto [result, overflow2] = sub_with_overflow(tmp, !carry ? mtl::u8(1) : mtl::u8(0));
+    return { result, !(overflow1 || overflow2), internal::is_sign_bit_different(result, lhs) };
 }
 
-mtl::u8 logical_or(const mtl::u8 a, const mtl::u8 b, StatusRegister &sr) noexcept {
-    const auto result = a | b;
+std::tuple<mtl::u8, bool, bool> subtract_decimal(const mtl::u8 lhs, const mtl::u8 rhs, const bool carry) noexcept {
+    bool borrow = !carry;
+    const auto [high_digit_lhs, low_digit_lhs] = internal::decode_decimal(lhs);
+    const auto [high_digit_rhs, low_digit_rhs] = internal::decode_decimal(rhs);
 
-    sr.negative = (result & mtl::u8(0x80)) != 0;
-    sr.zero     = result == 0;
-    return result;
+    const auto low_digit_sum  = internal::subtract_decimal_digits(low_digit_lhs, low_digit_rhs, borrow);
+    const auto high_digit_sum = internal::subtract_decimal_digits(high_digit_lhs, high_digit_rhs, borrow);
+
+    const auto result = internal::encode_decimal(high_digit_sum, low_digit_sum);
+    return { result, !borrow, internal::is_sign_bit_different(result, lhs) };
 }
 
-mtl::u8 logical_xor(const mtl::u8 a, const mtl::u8 b, StatusRegister &sr) noexcept {
-    const auto result = a ^ b;
+std::pair<mtl::u8, bool> shift_right(const mtl::u8 byte) noexcept { return { byte >> 1, (byte & mtl::u8(1)) != 0 }; }
 
-    sr.negative = (result & mtl::u8(0x80)) != 0;
-    sr.zero     = result == 0;
-    return result;
-}
-
-mtl::u8 shift_right(mtl::u8 a, StatusRegister &sr) noexcept {
-    sr.carry = (a & mtl::u8(1)) != 0; // store the rightmost bit
-    a >>= 1;
-
-    sr.negative = false;
-    sr.zero     = a == 0;
-    return a;
-}
-
-mtl::u8 shift_left(const mtl::u8 a, StatusRegister &sr) noexcept {
-    const auto [shifted, overflow] = shift_left(a, 1);
-    sr.carry                       = overflow;
-
-    sr.negative = (shifted & mtl::u8(0x80)) != 0;
-    sr.zero     = shifted == 0;
-    return shifted;
-}
-
-mtl::u8 rotate_left(const mtl::u8 a, StatusRegister &sr) noexcept {
+std::pair<mtl::u8, bool> rotate_left(const mtl::u8 a, const bool carry) noexcept {
     auto [shifted, overflow] = shift_left(a, 1);
-    if (sr.carry) shifted |= mtl::u8(1); // set the rightmost bit
-
-    sr.carry    = overflow;
-    sr.negative = (shifted & mtl::u8(0x80)) != 0;
-    sr.zero     = shifted == 0;
-    return shifted;
+    if (carry) shifted |= mtl::u8(1); // set the rightmost bit
+    return { shifted, overflow };
 }
 
-mtl::u8 rotate_right(mtl::u8 a, StatusRegister &sr) noexcept {
+std::pair<mtl::u8, bool> rotate_right(mtl::u8 a, const bool carry) noexcept {
     const bool output_carry = (a & mtl::u8(1)) != 0; // store the rightmost bit
     a >>= 1;
-    if (sr.carry) a |= mtl::u8(0x80); // set the leftmost bit
+    if (carry) a |= mtl::u8(0x80); // set the leftmost bit
 
-    sr.carry    = output_carry;
-    sr.negative = (a & mtl::u8(0x80)) != 0;
-    sr.zero     = a == 0;
-    return a;
+    return { a, output_carry };
 }
 } // namespace emulator::mos_6502::ALU
