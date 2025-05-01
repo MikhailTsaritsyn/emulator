@@ -301,25 +301,21 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
     } break;
 
     case Instruction::LDX: {
-        if (const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
-            std::holds_alternative<immediate_t>(address))
-            std::tie(registers.X, registers.SR.zero, registers.SR.negative) =
-                    value_with_flags(read(memory, registers.PC++, clock));
-        else if (std::holds_alternative<mtl::u16>(address))
-            std::tie(registers.X, registers.SR.zero, registers.SR.negative) =
-                    value_with_flags(read(memory, std::get<mtl::u16>(address), clock));
-        else mtl::panic("Unsupported addressing mode for LDX");
+        const auto arg = fetch_read_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock)
+                                 .transform([&memory, &registers, &clock](const ReadAddress load_address) {
+                                     return read(memory, load_address, registers.PC, clock);
+                                 });
+        if (!arg) mtl::panic("Unsupported addressing mode for LDX");
+        std::tie(registers.X, registers.SR.zero, registers.SR.negative) = value_with_flags(*arg);
     } break;
 
     case Instruction::LDY: {
-        if (const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
-            std::holds_alternative<immediate_t>(address))
-            std::tie(registers.X, registers.SR.zero, registers.SR.negative) =
-                    value_with_flags(read(memory, registers.PC++, clock));
-        else if (std::holds_alternative<mtl::u16>(address))
-            std::tie(registers.X, registers.SR.zero, registers.SR.negative) =
-                    value_with_flags(read(memory, std::get<mtl::u16>(address), clock));
-        else mtl::panic("Unsupported addressing mode for LDY");
+        const auto arg = fetch_read_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock)
+                                 .transform([&memory, &registers, &clock](const ReadAddress load_address) {
+                                     return read(memory, load_address, registers.PC, clock);
+                                 });
+        if (!arg) mtl::panic("Unsupported addressing mode for LDY");
+        std::tie(registers.Y, registers.SR.zero, registers.SR.negative) = value_with_flags(*arg);
     } break;
 
     case Instruction::STX: {
