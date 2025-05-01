@@ -34,6 +34,27 @@ void CPU::start(Memory &memory, Clock &clock, Registers &registers) noexcept {
 
 void CPU::terminate() noexcept { _terminate.test_and_set(); }
 
+std::optional<CPU::ReadAddress> CPU::fetch_read_address(const Addressing addressing,
+                                                        const Memory &memory,
+                                                        mtl::u16 &PC,
+                                                        const mtl::u8 X,
+                                                        const mtl::u8 Y,
+                                                        Clock &clock) noexcept {
+    switch (addressing) {
+    case Addressing::Absolute: return fetch_absolute_address(memory, PC, clock);
+    case Addressing::AbsoluteX: return fetch_absolute_address(memory, PC, X, clock);
+    case Addressing::AbsoluteY: return fetch_absolute_address(memory, PC, Y, clock);
+    case Addressing::Immediate: return immediate_t{};
+    case Addressing::IndexedIndirect: return fetch_indexed_indirect_address(memory, PC, X, clock);
+    case Addressing::IndirectIndexed: return fetch_indirect_indexed_address(memory, PC, Y, clock);
+    case Addressing::ZeroPage: return fetch_zero_page_address(memory, PC, clock);
+    case Addressing::ZeroPageX: return fetch_zero_page_address(memory, PC, X, clock);
+    case Addressing::ZeroPageY: return fetch_zero_page_address(memory, PC, Y, clock);
+    case Addressing::Indirect: return fetch_indirect_address(memory, PC, clock);
+    default: return std::nullopt;
+    }
+}
+
 CPU::Address CPU::fetch_address(const Addressing addressing,
                                 const Memory &memory,
                                 mtl::u16 &pc,
@@ -123,14 +144,12 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
 
     switch (*instruction) {
     case Instruction::LDA: {
-        if (const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
-            std::holds_alternative<immediate_t>(address))
-            std::tie(registers.AC, registers.SR.zero, registers.SR.negative) =
-                    value_with_flags(read(memory, registers.PC++, clock));
-        else if (std::holds_alternative<mtl::u16>(address))
-            std::tie(registers.AC, registers.SR.zero, registers.SR.negative) =
-                    value_with_flags(read(memory, std::get<mtl::u16>(address), clock));
-        else mtl::panic("Unsupported addressing mode for LDA");
+        const auto arg = fetch_read_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock)
+                                 .transform([&memory, &registers, &clock](const ReadAddress load_address) {
+                                     return read(memory, load_address, registers.PC, clock);
+                                 });
+        if (!arg) mtl::panic("Unsupported addressing mode for LDA");
+        std::tie(registers.AC, registers.SR.zero, registers.SR.negative) = value_with_flags(*arg);
     } break;
 
     case Instruction::STA: {
@@ -142,84 +161,64 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
     } break;
 
     case Instruction::ADC: {
-        if (const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
-            std::holds_alternative<immediate_t>(address)) {
-            mtl::u8 result;
-            if (registers.SR.decimal)
-                std::tie(result, registers.SR.carry, registers.SR.overflow) =
-                        ALU::add_decimal(registers.AC, read(memory, registers.PC++, clock), registers.SR.carry);
-            else
-                std::tie(result, registers.SR.carry, registers.SR.overflow) =
-                        ALU::add_binary(registers.AC, read(memory, registers.PC++, clock), registers.SR.carry);
-            std::tie(registers.AC, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-        } else if (std::holds_alternative<mtl::u16>(address)) {
-            const auto arg = read(memory, std::get<mtl::u16>(address), clock);
-            mtl::u8 result;
-            if (registers.SR.decimal)
-                std::tie(result, registers.SR.carry, registers.SR.overflow) =
-                        ALU::add_decimal(registers.AC, arg, registers.SR.carry);
-            else
-                std::tie(result, registers.SR.carry, registers.SR.overflow) =
-                        ALU::add_binary(registers.AC, arg, registers.SR.carry);
-            std::tie(registers.AC, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-        } else mtl::panic("Unsupported addressing mode for ADC");
+        const auto arg = fetch_read_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock)
+                                 .transform([&memory, &registers, &clock](const ReadAddress load_address) {
+                                     return read(memory, load_address, registers.PC, clock);
+                                 });
+        if (!arg) mtl::panic("Unsupported addressing mode for ADC");
+
+        mtl::u8 result;
+        if (registers.SR.decimal)
+            std::tie(result, registers.SR.carry, registers.SR.overflow) =
+                    ALU::add_decimal(registers.AC, *arg, registers.SR.carry);
+        else
+            std::tie(result, registers.SR.carry, registers.SR.overflow) =
+                    ALU::add_binary(registers.AC, *arg, registers.SR.carry);
+        std::tie(registers.AC, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
     } break;
 
     case Instruction::SBC: {
-        if (const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
-            std::holds_alternative<immediate_t>(address)) {
-            mtl::u8 result;
-            if (registers.SR.decimal)
-                std::tie(result, registers.SR.carry, registers.SR.overflow) =
-                        ALU::subtract_decimal(registers.AC, read(memory, registers.PC++, clock), registers.SR.carry);
-            else
-                std::tie(result, registers.SR.carry, registers.SR.overflow) =
-                        ALU::subtract_binary(registers.AC, read(memory, registers.PC++, clock), registers.SR.carry);
-            std::tie(registers.AC, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-        } else if (std::holds_alternative<mtl::u16>(address)) {
-            const auto arg = read(memory, std::get<mtl::u16>(address), clock);
-            mtl::u8 result;
-            if (registers.SR.decimal)
-                std::tie(result, registers.SR.carry, registers.SR.overflow) =
-                        ALU::subtract_decimal(registers.AC, arg, registers.SR.carry);
-            else
-                std::tie(result, registers.SR.carry, registers.SR.overflow) =
-                        ALU::subtract_binary(registers.AC, arg, registers.SR.carry);
-            std::tie(registers.AC, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-        } else mtl::panic("Unsupported addressing mode for SBC");
+        const auto arg = fetch_read_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock)
+                                 .transform([&memory, &registers, &clock](const ReadAddress load_address) {
+                                     return read(memory, load_address, registers.PC, clock);
+                                 });
+        if (!arg) mtl::panic("Unsupported addressing mode for SBC");
+
+        mtl::u8 result;
+        if (registers.SR.decimal)
+            std::tie(result, registers.SR.carry, registers.SR.overflow) =
+                    ALU::subtract_decimal(registers.AC, *arg, registers.SR.carry);
+        else
+            std::tie(result, registers.SR.carry, registers.SR.overflow) =
+                    ALU::subtract_binary(registers.AC, *arg, registers.SR.carry);
+        std::tie(registers.AC, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
     } break;
 
     case Instruction::AND: {
-        if (const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
-            std::holds_alternative<immediate_t>(address)) {
-            std::tie(registers.AC, registers.SR.zero, registers.SR.negative) =
-                    value_with_flags(registers.AC & read(memory, registers.PC++, clock));
-        } else if (std::holds_alternative<mtl::u16>(address)) {
-            const auto arg = read(memory, std::get<mtl::u16>(address), clock);
-            std::tie(registers.AC, registers.SR.zero, registers.SR.negative) = value_with_flags(registers.AC & arg);
-        } else mtl::panic("Unsupported addressing mode for AND");
+        const auto arg = fetch_read_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock)
+                                 .transform([&memory, &registers, &clock](const ReadAddress load_address) {
+                                     return read(memory, load_address, registers.PC, clock);
+                                 });
+        if (!arg) mtl::panic("Unsupported addressing mode for AND");
+        std::tie(registers.AC, registers.SR.zero, registers.SR.negative) = value_with_flags(registers.AC & *arg);
     } break;
 
     case Instruction::ORA: {
-        if (const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
-            std::holds_alternative<immediate_t>(address)) {
-            std::tie(registers.AC, registers.SR.zero, registers.SR.negative) =
-                    value_with_flags(registers.AC | read(memory, registers.PC++, clock));
-        } else if (std::holds_alternative<mtl::u16>(address)) {
-            const auto arg = read(memory, std::get<mtl::u16>(address), clock);
-            std::tie(registers.AC, registers.SR.zero, registers.SR.negative) = value_with_flags(registers.AC | arg);
-        } else mtl::panic("Unsupported addressing mode for ORA");
+        const auto arg = fetch_read_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock)
+                                 .transform([&memory, &registers, &clock](const ReadAddress load_address) {
+                                     return read(memory, load_address, registers.PC, clock);
+                                 });
+        if (!arg) mtl::panic("Unsupported addressing mode for ORA");
+        std::tie(registers.AC, registers.SR.zero, registers.SR.negative) = value_with_flags(registers.AC | *arg);
     } break;
 
     case Instruction::EOR: {
-        if (const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
-            std::holds_alternative<immediate_t>(address)) {
-            std::tie(registers.AC, registers.SR.zero, registers.SR.negative) =
-                    value_with_flags(registers.AC ^ read(memory, registers.PC++, clock));
-        } else if (std::holds_alternative<mtl::u16>(address)) {
-            const auto arg = read(memory, std::get<mtl::u16>(address), clock);
-            std::tie(registers.AC, registers.SR.zero, registers.SR.negative) = value_with_flags(registers.AC ^ arg);
-        } else mtl::panic("Unsupported addressing mode for EOR");
+        const auto arg = fetch_read_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock)
+            .transform([&memory, &registers, &clock](const ReadAddress load_address) {
+                return read(memory, load_address, registers.PC, clock);
+            });
+        if (!arg) mtl::panic("Unsupported addressing mode for EOR");
+        std::tie(registers.AC, registers.SR.zero, registers.SR.negative) = value_with_flags(registers.AC ^ *arg);
     } break;
 
     case Instruction::SEC: {
@@ -636,12 +635,19 @@ mtl::u8 CPU::read(const Memory &memory, const mtl::u16 address, Clock &clock) no
     return memory[address];
 }
 
+mtl::u8 CPU::read(const Memory &memory, const ReadAddress address, mtl::u16 &PC, Clock &clock) noexcept {
+    if (std::holds_alternative<immediate_t>(address)) return read(memory, PC++, clock);
+    else if (std::holds_alternative<mtl::u16>(address))
+        return read(memory, std::get<mtl::u16>(address), clock);
+    std::unreachable();
+}
+
 mtl::u16 CPU::branch(const Memory &memory, mtl::u16 pc, const bool condition, Clock &clock) noexcept {
-    // Assume _registers.PC = 0x0101
+    // Assume PC = 0x0101
     const auto offset = std::bit_cast<mtl::i8>(read(memory, pc++, clock)); // assume -0x50
     if (!condition) return pc;
 
-    read(memory, pc, clock);                                              // from _registers.PC = 0x0102, this data is ignored
+    read(memory, pc, clock);                                              // from PC = 0x0102, this data is ignored
     const auto [pcl, overflow] = add_with_overflow(low_byte(pc), offset); // 0xB2
     auto pch                   = high_byte(pc);                           // 0x01
 

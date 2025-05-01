@@ -87,6 +87,26 @@ private:
     using Address = std::variant<accumulator_t, implicit_t, immediate_t, relative_t, mtl::u16>;
 
     /**
+     * @brief Addressing modes that can be used to read a value from the memory
+     */
+    using ReadAddress = std::variant<immediate_t, mtl::u16>;
+
+    /**
+     * @brief Determine the address from which the current instruction's argument can be read
+     *
+     * @param[in]      addressing Addressing mode of the instruction
+     * @param[in]      memory Memory used by the CPU
+     * @param[in, out] PC The program counter
+     * @param[in]      X Index register X
+     * @param[in]      Y Index register Y
+     * @param[in, out] clock Emulated CPU clock
+     *
+     * @retval std::nullopt If and only if the given addressing mode does not support the desired address
+     */
+    [[nodiscard]] static std::optional<ReadAddress> fetch_read_address(
+            Addressing addressing, const Memory &memory, mtl::u16 &PC, mtl::u8 X, mtl::u8 Y, Clock &clock) noexcept;
+
+    /**
      * @brief Determine the address of the current instruction's argument
      *
      * @param[in]      addressing Addressing mode of the instruction
@@ -127,6 +147,8 @@ private:
      * @post Increments the cycle count.
      */
     static mtl::u8 read(const Memory &memory, mtl::u16 address, Clock &clock) noexcept;
+
+    [[nodiscard]] static mtl::u8 read(const Memory &memory, ReadAddress address, mtl::u16 &PC, Clock &clock) noexcept;
 
     /**
      * @brief Jump by a signed offset
