@@ -147,6 +147,45 @@ private:
     static void write(Memory &memory, mtl::u16 address, mtl::u8 value, Clock &clock) noexcept;
 
     /**
+     * @brief Shifts and rotations generalized
+     *
+     * They require a special, longer absolute addressing.
+     * They are all the same except for the operation itself, that can be generalized to a lambda.
+     */
+    template <std::invocable<mtl::u8> Func>
+    static void bit_manip(const Addressing addressing,
+                          Memory &memory,
+                          mtl::u16 &PC,
+                          const mtl::u8 X,
+                          const mtl::u8 Y,
+                          mtl::u8 &AC,
+                          StatusRegister &SR,
+                          Clock &clock,
+                          Func &&func) noexcept {
+        if (addressing == Addressing::AbsoluteX) {
+            const auto address = fetch_absolute_address_long(memory, PC, X, clock);
+            const auto arg     = read(memory, address, clock);
+            clock.wait_for_pulse();
+            mtl::u8 result;
+            std::tie(result, SR.carry)             = std::forward<Func>(func)(arg);
+            std::tie(result, SR.zero, SR.negative) = value_with_flags(result);
+            write(memory, address, result, clock);
+        } else if (const auto address = fetch_address(addressing, memory, PC, X, Y, clock);
+                   std::holds_alternative<accumulator_t>(address)) {
+            clock.wait_for_pulse();
+            std::tie(AC, SR.carry)             = std::forward<Func>(func)(AC);
+            std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC);
+        } else if (std::holds_alternative<mtl::u16>(address)) {
+            const auto arg = read(memory, std::get<mtl::u16>(address), clock);
+            clock.wait_for_pulse();
+            mtl::u8 result;
+            std::tie(result, SR.carry)             = std::forward<Func>(func)(arg);
+            std::tie(result, SR.zero, SR.negative) = value_with_flags(result);
+            write(memory, std::get<mtl::u16>(address), result, clock);
+        } else mtl::panic("Unsupported addressing mode for shift/rotate");
+    }
+
+    /**
      * @brief Jump by a signed offset
      *
      * The offset is read at the current program counter.

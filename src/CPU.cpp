@@ -388,103 +388,53 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
                 return_from_interrupt(memory, registers.PC, registers.SP, clock);
         break;
 
-    case Instruction::LSR: {
-        if (*addressing == Addressing::AbsoluteX) {
-            const auto address = fetch_absolute_address_long(memory, registers.PC, registers.X, clock);
-            const auto arg     = read(memory, address, clock);
-            clock.wait_for_pulse();
-            mtl::u8 result;
-            std::tie(result, registers.SR.carry) = ALU::shift_right(arg);
-            std::tie(result, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-            write(memory, address, result, clock);
-        } else if (const auto address =
-                           fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
-                   std::holds_alternative<accumulator_t>(address)) {
-            clock.wait_for_pulse();
-            std::tie(registers.AC, registers.SR.carry)                       = ALU::shift_right(registers.AC);
-            std::tie(registers.AC, registers.SR.zero, registers.SR.negative) = value_with_flags(registers.AC);
-        } else if (std::holds_alternative<mtl::u16>(address)) {
-            const auto arg = read(memory, std::get<mtl::u16>(address), clock);
-            clock.wait_for_pulse();
-            mtl::u8 result;
-            std::tie(result, registers.SR.carry)                       = ALU::shift_right(arg);
-            std::tie(result, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-            write(memory, std::get<mtl::u16>(address), result, clock);
-        } else mtl::panic("Unsupported addressing mode for LSR");
-    } break;
+    case Instruction::LSR:
+        bit_manip(*addressing,
+                  memory,
+                  registers.PC,
+                  registers.X,
+                  registers.Y,
+                  registers.AC,
+                  registers.SR,
+                  clock,
+                  [](const mtl::u8 arg) { return ALU::shift_right(arg); });
+        break;
 
-    case Instruction::ASL: {
-        if (*addressing == Addressing::AbsoluteX) {
-            const auto address = fetch_absolute_address_long(memory, registers.PC, registers.X, clock);
-            const auto arg  = read(memory, address, clock);
-            clock.wait_for_pulse();
-            mtl::u8 result;
-            std::tie(result, registers.SR.carry) = shift_left(arg, 1);
-            std::tie(result, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-            write(memory, address, result, clock);
-        } else if (const auto address =
-                           fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
-                   std::holds_alternative<accumulator_t>(address)) {
-            clock.wait_for_pulse();
-            std::tie(registers.AC, registers.SR.carry)                       = shift_left(registers.AC, 1);
-            std::tie(registers.AC, registers.SR.zero, registers.SR.negative) = value_with_flags(registers.AC);
-        } else if (std::holds_alternative<mtl::u16>(address)) {
-            const auto arg = read(memory, std::get<mtl::u16>(address), clock);
-            clock.wait_for_pulse();
-            mtl::u8 result;
-            std::tie(result, registers.SR.carry)                       = shift_left(arg, 1);
-            std::tie(result, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-            write(memory, std::get<mtl::u16>(address), result, clock);
-        } else mtl::panic("Unsupported addressing mode for ASL");
-    } break;
+    case Instruction::ASL:
+        bit_manip(*addressing,
+                  memory,
+                  registers.PC,
+                  registers.X,
+                  registers.Y,
+                  registers.AC,
+                  registers.SR,
+                  clock,
+                  [](const mtl::u8 arg) { return shift_left(arg, 1); });
+        break;
 
-    case Instruction::ROL: {
-        if (*addressing == Addressing::AbsoluteX) {
-            const auto address = fetch_absolute_address_long(memory, registers.PC, registers.X, clock);
-            const auto arg     = read(memory, address, clock);
-            clock.wait_for_pulse();
-            mtl::u8 result;
-            std::tie(result, registers.SR.carry) = ALU::rotate_left(arg, registers.SR.carry);
-            std::tie(result, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-            write(memory, address, result, clock);
-        } else if (const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
-                   std::holds_alternative<accumulator_t>(address)) {
-            clock.wait_for_pulse();
-            std::tie(registers.AC, registers.SR.carry) = ALU::rotate_left(registers.AC, registers.SR.carry);
-            std::tie(registers.AC, registers.SR.zero, registers.SR.negative) = value_with_flags(registers.AC);
-        } else if (std::holds_alternative<mtl::u16>(address)) {
-            const auto arg = read(memory, std::get<mtl::u16>(address), clock);
-            clock.wait_for_pulse();
-            mtl::u8 result;
-            std::tie(result, registers.SR.carry)                       = ALU::rotate_left(arg, registers.SR.carry);
-            std::tie(result, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-            write(memory, std::get<mtl::u16>(address), result, clock);
-        } else mtl::panic("Unsupported addressing mode for ROL");
-    } break;
+    case Instruction::ROL:
+        bit_manip(*addressing,
+                  memory,
+                  registers.PC,
+                  registers.X,
+                  registers.Y,
+                  registers.AC,
+                  registers.SR,
+                  clock,
+                  [carry = registers.SR.carry](const mtl::u8 arg) { return ALU::rotate_left(arg, carry); });
+        break;
 
-    case Instruction::ROR: {
-        if (*addressing == Addressing::AbsoluteX) {
-            const auto address = fetch_absolute_address_long(memory, registers.PC, registers.X, clock);
-            const auto arg     = read(memory, address, clock);
-            clock.wait_for_pulse();
-            mtl::u8 result;
-            std::tie(result, registers.SR.carry) = ALU::rotate_right(arg, registers.SR.carry);
-            std::tie(result, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-            write(memory, address, result, clock);
-        } else if (const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
-                   std::holds_alternative<accumulator_t>(address)) {
-            clock.wait_for_pulse();
-            std::tie(registers.AC, registers.SR.carry) = ALU::rotate_right(registers.AC, registers.SR.carry);
-            std::tie(registers.AC, registers.SR.zero, registers.SR.negative) = value_with_flags(registers.AC);
-        } else if (std::holds_alternative<mtl::u16>(address)) {
-            const auto arg = read(memory, std::get<mtl::u16>(address), clock);
-            clock.wait_for_pulse();
-            mtl::u8 result;
-            std::tie(result, registers.SR.carry)                       = ALU::rotate_right(arg, registers.SR.carry);
-            std::tie(result, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-            write(memory, std::get<mtl::u16>(address), result, clock);
-        } else mtl::panic("Unsupported addressing mode for ROR");
-    } break;
+    case Instruction::ROR:
+        bit_manip(*addressing,
+                  memory,
+                  registers.PC,
+                  registers.X,
+                  registers.Y,
+                  registers.AC,
+                  registers.SR,
+                  clock,
+                  [carry = registers.SR.carry](const mtl::u8 arg) { return ALU::rotate_right(arg, carry); });
+        break;
 
     case Instruction::INC: {
         if (*addressing == Addressing::AbsoluteX) {
