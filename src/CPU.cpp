@@ -259,16 +259,18 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
 
     case Instruction::STX: {
         if (const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
-            std::holds_alternative<mtl::u16>(address))
+            std::holds_alternative<mtl::u16>(address)) {
+            clock.wait_for_pulse();
             memory.write(std::get<mtl::u16>(address), registers.X);
-        else mtl::panic("Unsupported addressing mode for STX");
+        } else mtl::panic("Unsupported addressing mode for STX");
     } break;
 
     case Instruction::STY: {
         if (const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
-            std::holds_alternative<mtl::u16>(address))
+            std::holds_alternative<mtl::u16>(address)) {
+            clock.wait_for_pulse();
             memory.write(std::get<mtl::u16>(address), registers.Y);
-        else mtl::panic("Unsupported addressing mode for STY");
+        } else mtl::panic("Unsupported addressing mode for STY");
     } break;
 
     case Instruction::INX: {
