@@ -129,10 +129,9 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
 
     case Instruction::STA: {
         if (const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
-            std::holds_alternative<mtl::u16>(address)) {
-            clock.wait_for_pulse();
-            memory.write(std::get<mtl::u16>(address), registers.AC);
-        } else mtl::panic("Unsupported addressing mode for STA");
+            std::holds_alternative<mtl::u16>(address))
+            write(memory, std::get<mtl::u16>(address), registers.AC, clock);
+        else mtl::panic("Unsupported addressing mode for STA");
     } break;
 
     case Instruction::ADC: {
@@ -260,16 +259,14 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
     case Instruction::STX: {
         if (const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
             std::holds_alternative<mtl::u16>(address)) {
-            clock.wait_for_pulse();
-            memory.write(std::get<mtl::u16>(address), registers.X);
+            write(memory, std::get<mtl::u16>(address), registers.X, clock);
         } else mtl::panic("Unsupported addressing mode for STX");
     } break;
 
     case Instruction::STY: {
         if (const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
             std::holds_alternative<mtl::u16>(address)) {
-            clock.wait_for_pulse();
-            memory.write(std::get<mtl::u16>(address), registers.Y);
+            write(memory, std::get<mtl::u16>(address), registers.Y, clock);
         } else mtl::panic("Unsupported addressing mode for STY");
     } break;
 
@@ -326,10 +323,8 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
     case Instruction::JSR: {
         const auto adl = read(memory, registers.PC++, clock);
         clock.wait_for_pulse();
-        clock.wait_for_pulse();
-        registers.SP = push(memory, registers.SP, high_byte(registers.PC));
-        clock.wait_for_pulse();
-        registers.SP             = push(memory, registers.SP, low_byte(registers.PC));
+        registers.SP             = push(memory, registers.SP, high_byte(registers.PC), clock);
+        registers.SP             = push(memory, registers.SP, low_byte(registers.PC), clock);
         const auto adh = read(memory, registers.PC, clock);
         registers.PC             = make_word(adh, adl);
     } break;
@@ -347,8 +342,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
 
     case Instruction::PHA: {
         read(memory, registers.PC, clock); // the data is discarded
-        clock.wait_for_pulse();
-        registers.SP = push(memory, registers.SP, registers.AC);
+        registers.SP = push(memory, registers.SP, registers.AC, clock);
     } break;
 
     case Instruction::PLA: {
@@ -371,8 +365,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
 
     case Instruction::PHP: {
         read(memory, registers.PC, clock); // the data is discarded
-        clock.wait_for_pulse();
-        registers.SP = push(memory, registers.SP, static_cast<mtl::u8>(registers.SR));
+        registers.SP = push(memory, registers.SP, static_cast<mtl::u8>(registers.SR), clock);
     } break;
 
     case Instruction::PLP: {
@@ -384,8 +377,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
 
     case Instruction::BRK:
         if (!registers.SR.interrupt_disable) {
-            clock.wait_for_pulse();
-            registers.SP = push(memory, registers.SP, static_cast<mtl::u8>(StatusRegister{ .break_ = true }));
+            registers.SP = push(memory, registers.SP, static_cast<mtl::u8>(StatusRegister{ .break_ = true }), clock);
             std::tie(registers.PC, registers.SP) =
                     interrupt(memory, registers.PC, registers.SP, registers.SR, IRQ, clock);
         }
@@ -403,9 +395,8 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
             clock.wait_for_pulse();
             mtl::u8 result;
             std::tie(result, registers.SR.carry) = ALU::shift_right(arg);
-            clock.wait_for_pulse();
             std::tie(result, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-            memory.write(address, result);
+            write(memory, address, result, clock);
         } else if (const auto address =
                            fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
                    std::holds_alternative<accumulator_t>(address)) {
@@ -418,8 +409,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
             mtl::u8 result;
             std::tie(result, registers.SR.carry)                       = ALU::shift_right(arg);
             std::tie(result, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-            clock.wait_for_pulse();
-            memory.write(std::get<mtl::u16>(address), result);
+            write(memory, std::get<mtl::u16>(address), result, clock);
         } else mtl::panic("Unsupported addressing mode for LSR");
     } break;
 
@@ -430,9 +420,8 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
             clock.wait_for_pulse();
             mtl::u8 result;
             std::tie(result, registers.SR.carry) = shift_left(arg, 1);
-            clock.wait_for_pulse();
             std::tie(result, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-            memory.write(address, result);
+            write(memory, address, result, clock);
         } else if (const auto address =
                            fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
                    std::holds_alternative<accumulator_t>(address)) {
@@ -445,8 +434,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
             mtl::u8 result;
             std::tie(result, registers.SR.carry)                       = shift_left(arg, 1);
             std::tie(result, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-            clock.wait_for_pulse();
-            memory.write(std::get<mtl::u16>(address), result);
+            write(memory, std::get<mtl::u16>(address), result, clock);
         } else mtl::panic("Unsupported addressing mode for ASL");
     } break;
 
@@ -457,9 +445,8 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
             clock.wait_for_pulse();
             mtl::u8 result;
             std::tie(result, registers.SR.carry) = ALU::rotate_left(arg, registers.SR.carry);
-            clock.wait_for_pulse();
             std::tie(result, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-            memory.write(address, result);
+            write(memory, address, result, clock);
         } else if (const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
                    std::holds_alternative<accumulator_t>(address)) {
             clock.wait_for_pulse();
@@ -471,8 +458,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
             mtl::u8 result;
             std::tie(result, registers.SR.carry)                       = ALU::rotate_left(arg, registers.SR.carry);
             std::tie(result, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-            clock.wait_for_pulse();
-            memory.write(std::get<mtl::u16>(address), result);
+            write(memory, std::get<mtl::u16>(address), result, clock);
         } else mtl::panic("Unsupported addressing mode for ROL");
     } break;
 
@@ -483,9 +469,8 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
             clock.wait_for_pulse();
             mtl::u8 result;
             std::tie(result, registers.SR.carry) = ALU::rotate_right(arg, registers.SR.carry);
-            clock.wait_for_pulse();
             std::tie(result, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-            memory.write(address, result);
+            write(memory, address, result, clock);
         } else if (const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
                    std::holds_alternative<accumulator_t>(address)) {
             clock.wait_for_pulse();
@@ -497,8 +482,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
             mtl::u8 result;
             std::tie(result, registers.SR.carry)                       = ALU::rotate_right(arg, registers.SR.carry);
             std::tie(result, registers.SR.zero, registers.SR.negative) = value_with_flags(result);
-            clock.wait_for_pulse();
-            memory.write(std::get<mtl::u16>(address), result);
+            write(memory, std::get<mtl::u16>(address), result, clock);
         } else mtl::panic("Unsupported addressing mode for ROR");
     } break;
 
@@ -506,15 +490,11 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
         if (*addressing == Addressing::AbsoluteX) {
             const auto address = fetch_absolute_address_long(memory, registers.PC, registers.X, clock);
             const auto arg  = read(memory, address, clock);
-            clock.wait_for_pulse();
-            clock.wait_for_pulse();
-            memory.write(address, arg.next());
+            write(memory, address, arg.next(), clock);
         } else if (const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
                    std::holds_alternative<mtl::u16>(address)) {
             const auto arg = read(memory, std::get<mtl::u16>(address), clock);
-            clock.wait_for_pulse();
-            clock.wait_for_pulse();
-            memory.write(std::get<mtl::u16>(address), arg.next());
+            write(memory, std::get<mtl::u16>(address), arg.next(), clock);
         } else mtl::panic("Unsupported addressing mode for INC");
     } break;
 
@@ -523,14 +503,12 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
             const auto address = fetch_absolute_address_long(memory, registers.PC, registers.X, clock);
             const auto arg  = read(memory, address, clock);
             clock.wait_for_pulse();
-            clock.wait_for_pulse();
-            memory.write(address, arg.prev());
+            write(memory, address, arg.prev(), clock);
         } else if (const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
                    std::holds_alternative<mtl::u16>(address)) {
             const auto arg = read(memory, std::get<mtl::u16>(address), clock);
             clock.wait_for_pulse();
-            clock.wait_for_pulse();
-            memory.write(std::get<mtl::u16>(address), arg.prev());
+            write(memory, std::get<mtl::u16>(address), arg.prev(), clock);
         } else mtl::panic("Unsupported addressing mode for INC");
     } break;
 
@@ -573,6 +551,11 @@ mtl::u8 CPU::read(const Addressing addressing,
     else mtl::panic("Unsupported addressing for reading");
 }
 
+void CPU::write(Memory &memory, const mtl::u16 address, const mtl::u8 value, Clock &clock) noexcept {
+    clock.wait_for_pulse();
+    if (!memory.write(address, value)) mtl::panic("Writing to read-only memory");
+}
+
 mtl::u16 CPU::branch(const Memory &memory, mtl::u16 pc, const bool condition, Clock &clock) noexcept {
     // Assume PC = 0x0101
     const auto offset = std::bit_cast<mtl::i8>(read(memory, pc++, clock)); // assume -0x50
@@ -601,8 +584,8 @@ std::tuple<bool, bool, bool> CPU::compare(const mtl::u8 a, const mtl::u8 b) noex
     return { negative, carry, zero };
 }
 
-mtl::u8 CPU::push(Memory &memory, const mtl::u8 sp, const mtl::u8 byte) noexcept {
-    if (!memory.write(make_word(mtl::u8(0x01), sp), byte)) mtl::panic("Stack is read-only");
+mtl::u8 CPU::push(Memory &memory, const mtl::u8 sp, const mtl::u8 byte, Clock &clock) noexcept {
+    write(memory, make_word(mtl::u8(0x01), sp), byte, clock);
     return sp.prev();
 }
 
@@ -613,12 +596,9 @@ std::pair<mtl::u16, mtl::u8> CPU::interrupt(Memory &memory,
                                             const mtl::u16 handler_address,
                                             Clock &clock) noexcept {
     read(memory, pc, clock); // this data is discarded
-    clock.wait_for_pulse();
-    sp = push(memory, sp, high_byte(pc));
-    clock.wait_for_pulse();
-    sp = push(memory, sp, low_byte(pc));
-    clock.wait_for_pulse();
-    sp             = push(memory, sp, static_cast<mtl::u8>(sr));
+    sp             = push(memory, sp, high_byte(pc), clock);
+    sp             = push(memory, sp, low_byte(pc), clock);
+    sp             = push(memory, sp, static_cast<mtl::u8>(sr), clock);
     const auto pcl = read(memory, handler_address, clock);
     const auto pch = read(memory, handler_address.next(), clock);
     return { make_word(pch, pcl), sp };

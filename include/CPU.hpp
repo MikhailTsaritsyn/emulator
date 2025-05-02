@@ -139,6 +139,14 @@ private:
     read(Addressing addressing, const Memory &memory, mtl::u16 &PC, mtl::u8 X, mtl::u8 Y, Clock &clock) noexcept;
 
     /**
+     * @brief Write a byte to memory
+     *
+     * Elapses one clock cycle.
+     * If the address is read-only, panics.
+     */
+    static void write(Memory &memory, mtl::u16 address, mtl::u8 value, Clock &clock) noexcept;
+
+    /**
      * @brief Jump by a signed offset
      *
      * The offset is read at the current program counter.
@@ -158,7 +166,7 @@ private:
      */
     [[nodiscard]] static std::tuple<bool, bool, bool> compare(mtl::u8 a, mtl::u8 b) noexcept;
 
-    [[nodiscard]] static mtl::u8 push(Memory &memory, mtl::u8 sp, mtl::u8 byte) noexcept;
+    [[nodiscard]] static mtl::u8 push(Memory &memory, mtl::u8 sp, mtl::u8 byte, Clock &clock) noexcept;
 
     /**
      * @break Jump to the interrupt handler
