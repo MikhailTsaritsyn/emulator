@@ -17,31 +17,33 @@ std::optional<Addressing> getAddressing(const mtl::u8 opcode) noexcept {
         switch (c.to_underlying()) {
         case 0:
             switch (a.to_underlying()) {
-            case 0: return Addressing::Implicit;
-            case 1: return Addressing::Absolute;
-            case 2: return Addressing::Implicit;
-            case 3: return Addressing::Implicit;
-            case 5: return Addressing::Immediate;
-            case 6: return Addressing::Immediate;
-            case 7: return Addressing::Immediate;
+            case 0: return implicit_t{};
+            case 1: return MemoryAddressing::Absolute;
+            case 2: return implicit_t{};
+            case 3: return implicit_t{};
+            case 5: return immediate_t{};
+            case 6: return immediate_t{};
+            case 7: return immediate_t{};
             default: return std::nullopt;
             }
-        case 1: return Addressing::IndexedIndirect;
-        case 2: return a == 5 ? std::make_optional(Addressing::Immediate) : std::nullopt;
+        case 1: return MemoryAddressing::IndexedIndirect;
+        case 2: return a == 5 ? std::make_optional(immediate_t{}) : std::nullopt;
         default: return std::nullopt;
         }
     case 1:
         switch (c.to_underlying()) {
-        case 0: return a == 0 || a == 2 || a == 3 ? std::nullopt : std::make_optional(Addressing::ZeroPage);
-        case 1: return Addressing::ZeroPage;
-        case 2: return Addressing::ZeroPage;
+        case 0: return a == 0 || a == 2 || a == 3 ? std::nullopt : std::make_optional(MemoryAddressing::ZeroPage);
+        case 1: return MemoryAddressing::ZeroPage;
+        case 2: return MemoryAddressing::ZeroPage;
         default: return std::nullopt;
         }
     case 2:
         switch (c.to_underlying()) {
-        case 0: return Addressing::Implicit;
-        case 1: return a == 4 ? std::nullopt : std::make_optional(Addressing::Immediate);
-        case 2: return a < mtl::u8(4) ? Addressing::Accumulator : Addressing::Implicit;
+        case 0: return implicit_t{};
+        case 1: return a == 4 ? std::nullopt : std::make_optional(immediate_t{});
+        case 2:
+            if (a < mtl::u8(4)) return accumulator_t{};
+            else return implicit_t{};
         default: return std::nullopt;
         }
     case 3:
@@ -49,42 +51,42 @@ std::optional<Addressing> getAddressing(const mtl::u8 opcode) noexcept {
         case 0:
             switch (a.to_underlying()) {
             case 0: return std::nullopt;
-            case 3: return Addressing::Indirect;
-            default: return Addressing::Absolute;
+            case 3: return MemoryAddressing::Indirect;
+            default: return MemoryAddressing::Absolute;
             }
-        case 1: return Addressing::Absolute;
-        case 2: return Addressing::Absolute;
+        case 1: return MemoryAddressing::Absolute;
+        case 2: return MemoryAddressing::Absolute;
         default: return std::nullopt;
         }
     case 4:
         switch (c.to_underlying()) {
-        case 0: return Addressing::Relative;
-        case 1: return Addressing::IndirectIndexed;
+        case 0: return relative_t{};
+        case 1: return MemoryAddressing::IndirectIndexed;
         default: return std::nullopt;
         }
     case 5:
         switch (c.to_underlying()) {
-        case 0: return a == 4 || a == 5 ? std::make_optional(Addressing::ZeroPageX) : std::nullopt;
-        case 1: return Addressing::ZeroPageX;
-        case 2: return a == 4 || a == 5 ? Addressing::ZeroPageY : Addressing::ZeroPageX;
+        case 0: return a == 4 || a == 5 ? std::make_optional(MemoryAddressing::ZeroPageX) : std::nullopt;
+        case 1: return MemoryAddressing::ZeroPageX;
+        case 2: return a == 4 || a == 5 ? MemoryAddressing::ZeroPageY : MemoryAddressing::ZeroPageX;
         default: return std::nullopt;
         }
     case 6:
         switch (c.to_underlying()) {
-        case 0: return Addressing::Implicit;
-        case 1: return Addressing::AbsoluteY;
-        case 2: return a == 4 || a == 5 ? std::make_optional(Addressing::Implicit) : std::nullopt;
+        case 0: return implicit_t{};
+        case 1: return MemoryAddressing::AbsoluteY;
+        case 2: return a == 4 || a == 5 ? std::make_optional(implicit_t{}) : std::nullopt;
         default: return std::nullopt;
         }
     case 7:
         switch (c.to_underlying()) {
-        case 0: return a == 5 ? std::make_optional(Addressing::AbsoluteX) : std::nullopt;
-        case 1: return Addressing::AbsoluteX;
+        case 0: return a == 5 ? std::make_optional(MemoryAddressing::AbsoluteX) : std::nullopt;
+        case 1: return MemoryAddressing::AbsoluteX;
         case 2:
             switch (a.to_underlying()) {
             case 4: return std::nullopt;
-            case 5: return Addressing::AbsoluteY;
-            default: return Addressing::AbsoluteX;
+            case 5: return MemoryAddressing::AbsoluteY;
+            default: return MemoryAddressing::AbsoluteX;
             }
         default: return std::nullopt;
         }

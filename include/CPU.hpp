@@ -12,9 +12,6 @@
 #include <atomic>
 #include <tuple>
 
-// TODO: on_clock_pulse(Func &&func) wrapper?
-// TODO: instead of passing memory + PC pass iterator to the current byte?
-
 namespace emulator::mos_6502 {
 class CPU {
 public:
@@ -60,33 +57,6 @@ public:
 
 private:
     /**
-     * @brief The argument of the current operation os the accumulator
-     */
-    struct accumulator_t {};
-
-    /**
-     * @brief The current operation has no arguments
-     */
-    struct implicit_t {};
-
-    /**
-     * @brief The argument of the current operation is written right after the opcode
-     */
-    struct immediate_t {};
-
-    /**
-     * @brief The branching offset is written right after the opcode
-     */
-    struct relative_t {};
-
-    /**
-     * @broef Address where to fetch the argument of the current operation
-     */
-    // TODO: specialize reading addresses
-    // TODO: specialize writing addresses
-    using Address = std::variant<accumulator_t, implicit_t, immediate_t, relative_t, mtl::u16>;
-
-    /**
      * @brief Determine the address of the current instruction's argument
      *
      * @param[in]      addressing Addressing mode of the instruction
@@ -96,8 +66,12 @@ private:
      * @param[in]      y Index register Y
      * @param[in, out] clock Emulated CPU clock
      */
-    [[nodiscard]] static Address fetch_address(
-            Addressing addressing, const Memory &memory, mtl::u16 &pc, mtl::u8 x, mtl::u8 y, Clock &clock) noexcept;
+    [[nodiscard]] static mtl::u16 fetch_address(MemoryAddressing addressing,
+                                                const Memory &memory,
+                                                mtl::u16 &pc,
+                                                mtl::u8 x,
+                                                mtl::u8 y,
+                                                Clock &clock) noexcept;
 
     [[nodiscard]] static mtl::u16 fetch_absolute_address(const Memory &memory, mtl::u16 &pc, Clock &clock) noexcept;
 
@@ -129,6 +103,58 @@ private:
     static mtl::u8 read(const Memory &memory, mtl::u16 address, Clock &clock) noexcept;
 
     /**
+     * @brief Read a byte from a memory
+     *
+     * If the addressing mode is immediate, will read the byte and increment the program counter.
+     * Otherwise, for memory-related addressing modes such as absolute,
+     * first determines the address and then reads the value.
+     */
+    [[nodiscard]] static mtl::u8
+    read(Addressing addressing, const Memory &memory, mtl::u16 &PC, mtl::u8 X, mtl::u8 Y, Clock &clock) noexcept;
+
+    /**
+     * @brief Write a byte to memory
+     *
+     * Elapses one clock cycle.
+     * If the address is read-only, panics.
+     */
+    static void write(Memory &memory, mtl::u16 address, mtl::u8 value, Clock &clock) noexcept;
+
+    /**
+     * @brief Shifts and rotations generalized
+     *
+     * They require a special, longer absolute addressing.
+     * They are all the same except for the operation itself, that can be generalized to a lambda.
+     */
+    template <std::invocable<mtl::u8> Func>
+    static void bit_manip(const Addressing addressing,
+                          Memory &memory,
+                          mtl::u16 &PC,
+                          const mtl::u8 X,
+                          const mtl::u8 Y,
+                          mtl::u8 &AC,
+                          StatusRegister &SR,
+                          Clock &clock,
+                          Func &&func) noexcept {
+        if (std::holds_alternative<accumulator_t>(addressing)) {
+            clock.wait_for_pulse();
+            std::tie(AC, SR.carry)             = std::forward<Func>(func)(AC);
+            std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC);
+        } else if (std::holds_alternative<MemoryAddressing>(addressing)) {
+            const auto memory_addressing = std::get<MemoryAddressing>(addressing);
+            const auto address           = memory_addressing == MemoryAddressing::AbsoluteX
+                                                   ? fetch_absolute_address_long(memory, PC, X, clock)
+                                                   : fetch_address(memory_addressing, memory, PC, X, Y, clock);
+            const auto arg     = read(memory, address, clock);
+            clock.wait_for_pulse();
+            mtl::u8 result;
+            std::tie(result, SR.carry)             = std::forward<Func>(func)(arg);
+            std::tie(result, SR.zero, SR.negative) = value_with_flags(result);
+            write(memory, address, result, clock);
+        } else mtl::panic("Unsupported addressing mode for bit manipulation instructions");
+    }
+
+    /**
      * @brief Jump by a signed offset
      *
      * The offset is read at the current program counter.
@@ -148,7 +174,7 @@ private:
      */
     [[nodiscard]] static std::tuple<bool, bool, bool> compare(mtl::u8 a, mtl::u8 b) noexcept;
 
-    [[nodiscard]] static mtl::u8 push(Memory &memory, mtl::u8 sp, mtl::u8 byte) noexcept;
+    [[nodiscard]] static mtl::u8 push(Memory &memory, mtl::u8 sp, mtl::u8 byte, Clock &clock) noexcept;
 
     /**
      * @break Jump to the interrupt handler
@@ -190,6 +216,11 @@ private:
     [[nodiscard]] static std::tuple<mtl::u16, mtl::u8, StatusRegister>
     return_from_interrupt(const Memory &memory, mtl::u16 pc, mtl::u8 sp, Clock &clock) noexcept;
 
+    /**
+     * @brief Special case of absolute addressing used in some commands
+     *
+     * Wastes additional clock cycles, hence the name.
+     */
     [[nodiscard]] static mtl::u16
     fetch_absolute_address_long(const Memory &memory, mtl::u16 &pc, mtl::u8 index, Clock &clock) noexcept;
 
