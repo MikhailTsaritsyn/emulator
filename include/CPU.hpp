@@ -12,9 +12,6 @@
 #include <atomic>
 #include <tuple>
 
-// TODO: on_clock_pulse(Func &&func) wrapper?
-// TODO: instead of passing memory + PC pass iterator to the current byte?
-
 namespace emulator::mos_6502 {
 class CPU {
 public:
@@ -82,8 +79,6 @@ private:
     /**
      * @broef Address where to fetch the argument of the current operation
      */
-    // TODO: specialize reading addresses
-    // TODO: specialize writing addresses
     using Address = std::variant<accumulator_t, implicit_t, immediate_t, relative_t, mtl::u16>;
 
     /**
