@@ -66,8 +66,12 @@ private:
      * @param[in]      y Index register Y
      * @param[in, out] clock Emulated CPU clock
      */
-    [[nodiscard]] static mtl::u16 fetch_address(
-            Addressing addressing, const Memory &memory, mtl::u16 &pc, mtl::u8 x, mtl::u8 y, Clock &clock) noexcept;
+    [[nodiscard]] static mtl::u16 fetch_address(MemoryAddressing addressing,
+                                                const Memory &memory,
+                                                mtl::u16 &pc,
+                                                mtl::u8 x,
+                                                mtl::u8 y,
+                                                Clock &clock) noexcept;
 
     [[nodiscard]] static mtl::u16 fetch_absolute_address(const Memory &memory, mtl::u16 &pc, Clock &clock) noexcept;
 
@@ -132,21 +136,22 @@ private:
                           StatusRegister &SR,
                           Clock &clock,
                           Func &&func) noexcept {
-        if (addressing == Addressing::Accumulator) {
+        if (std::holds_alternative<accumulator_t>(addressing)) {
             clock.wait_for_pulse();
             std::tie(AC, SR.carry)             = std::forward<Func>(func)(AC);
             std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC);
-        } else {
-            const auto address = addressing == Addressing::AbsoluteX
-                                         ? fetch_absolute_address_long(memory, PC, X, clock)
-                                         : fetch_address(addressing, memory, PC, X, Y, clock);
+        } else if (std::holds_alternative<MemoryAddressing>(addressing)) {
+            const auto memory_addressing = std::get<MemoryAddressing>(addressing);
+            const auto address           = memory_addressing == MemoryAddressing::AbsoluteX
+                                                   ? fetch_absolute_address_long(memory, PC, X, clock)
+                                                   : fetch_address(memory_addressing, memory, PC, X, Y, clock);
             const auto arg     = read(memory, address, clock);
             clock.wait_for_pulse();
             mtl::u8 result;
             std::tie(result, SR.carry)             = std::forward<Func>(func)(arg);
             std::tie(result, SR.zero, SR.negative) = value_with_flags(result);
             write(memory, address, result, clock);
-        }
+        } else mtl::panic("Unsupported addressing mode for bit manipulation instructions");
     }
 
     /**

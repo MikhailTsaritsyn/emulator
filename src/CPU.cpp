@@ -33,24 +33,24 @@ void CPU::start(Memory &memory, Clock &clock, Registers &registers) noexcept {
 
 void CPU::terminate() noexcept { _terminate.test_and_set(); }
 
-mtl::u16 CPU::fetch_address(const Addressing addressing,
+mtl::u16 CPU::fetch_address(const MemoryAddressing addressing,
                             const Memory &memory,
                             mtl::u16 &pc,
                             const mtl::u8 x,
                             const mtl::u8 y,
                             Clock &clock) noexcept {
     switch (addressing) {
-    case Addressing::Absolute: return fetch_absolute_address(memory, pc, clock);
-    case Addressing::AbsoluteX: return fetch_absolute_address(memory, pc, x, clock);
-    case Addressing::AbsoluteY: return fetch_absolute_address(memory, pc, y, clock);
-    case Addressing::IndexedIndirect: return fetch_indexed_indirect_address(memory, pc, x, clock);
-    case Addressing::IndirectIndexed: return fetch_indirect_indexed_address(memory, pc, y, clock);
-    case Addressing::ZeroPage: return fetch_zero_page_address(memory, pc, clock);
-    case Addressing::ZeroPageX: return fetch_zero_page_address(memory, pc, x, clock);
-    case Addressing::ZeroPageY: return fetch_zero_page_address(memory, pc, y, clock);
-    case Addressing::Indirect: return fetch_indirect_address(memory, pc, clock);
-    default: mtl::panic("Addressing mode is not suitable for memory operations");
+    case MemoryAddressing::Absolute: return fetch_absolute_address(memory, pc, clock);
+    case MemoryAddressing::AbsoluteX: return fetch_absolute_address(memory, pc, x, clock);
+    case MemoryAddressing::AbsoluteY: return fetch_absolute_address(memory, pc, y, clock);
+    case MemoryAddressing::IndexedIndirect: return fetch_indexed_indirect_address(memory, pc, x, clock);
+    case MemoryAddressing::IndirectIndexed: return fetch_indirect_indexed_address(memory, pc, y, clock);
+    case MemoryAddressing::ZeroPage: return fetch_zero_page_address(memory, pc, clock);
+    case MemoryAddressing::ZeroPageX: return fetch_zero_page_address(memory, pc, x, clock);
+    case MemoryAddressing::ZeroPageY: return fetch_zero_page_address(memory, pc, y, clock);
+    case MemoryAddressing::Indirect: return fetch_indirect_address(memory, pc, clock);
     }
+    std::unreachable();
 }
 
 mtl::u16 CPU::fetch_absolute_address(const Memory &memory, mtl::u16 &pc, Clock &clock) noexcept {
@@ -123,7 +123,9 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
     } break;
 
     case Instruction::STA: {
-        const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
+        if (!std::holds_alternative<MemoryAddressing>(*addressing)) mtl::panic("Unsupported addressing mode for STA");
+        const auto address = fetch_address(
+                std::get<MemoryAddressing>(*addressing), memory, registers.PC, registers.X, registers.Y, clock);
         write(memory, address, registers.AC, clock);
     } break;
 
@@ -204,7 +206,9 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
     } break;
 
     case Instruction::JMP:
-        registers.PC = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
+        if (!std::holds_alternative<MemoryAddressing>(*addressing)) mtl::panic("Unsupported addressing mode for JMP");
+        registers.PC = fetch_address(
+                std::get<MemoryAddressing>(*addressing), memory, registers.PC, registers.X, registers.Y, clock);
         break;
 
     case Instruction::BMI: registers.PC = branch(memory, registers.PC, registers.SR.negative, clock); break;
@@ -247,12 +251,16 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
     } break;
 
     case Instruction::STX: {
-        const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
+        if (!std::holds_alternative<MemoryAddressing>(*addressing)) mtl::panic("Unsupported addressing mode for STX");
+        const auto address = fetch_address(
+                std::get<MemoryAddressing>(*addressing), memory, registers.PC, registers.X, registers.Y, clock);
         write(memory, address, registers.X, clock);
     } break;
 
     case Instruction::STY: {
-        const auto address = fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
+        if (!std::holds_alternative<MemoryAddressing>(*addressing)) mtl::panic("Unsupported addressing mode for STY");
+        const auto address = fetch_address(
+                std::get<MemoryAddressing>(*addressing), memory, registers.PC, registers.X, registers.Y, clock);
         write(memory, address, registers.Y, clock);
     } break;
 
@@ -423,19 +431,23 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
         break;
 
     case Instruction::INC: {
+        if (!std::holds_alternative<MemoryAddressing>(*addressing)) mtl::panic("Unsupported addressing mode for INC");
+        const auto memory_addressing = std::get<MemoryAddressing>(*addressing);
         const auto address =
-                *addressing == Addressing::AbsoluteX
+                memory_addressing == MemoryAddressing::AbsoluteX
                         ? fetch_absolute_address_long(memory, registers.PC, registers.X, clock)
-                        : fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
+                        : fetch_address(memory_addressing, memory, registers.PC, registers.X, registers.Y, clock);
         const auto arg = read(memory, address, clock);
         write(memory, address, arg.next(), clock);
     } break;
 
     case Instruction::DEC: {
+        if (!std::holds_alternative<MemoryAddressing>(*addressing)) mtl::panic("Unsupported addressing mode for DEC");
+        const auto memory_addressing = std::get<MemoryAddressing>(*addressing);
         const auto address =
-                *addressing == Addressing::AbsoluteX
+                memory_addressing == MemoryAddressing::AbsoluteX
                         ? fetch_absolute_address_long(memory, registers.PC, registers.X, clock)
-                        : fetch_address(*addressing, memory, registers.PC, registers.X, registers.Y, clock);
+                        : fetch_address(memory_addressing, memory, registers.PC, registers.X, registers.Y, clock);
         const auto arg = read(memory, address, clock);
         write(memory, address, arg.prev(), clock);
     } break;
@@ -472,9 +484,11 @@ mtl::u8 CPU::read(const Addressing addressing,
                   const mtl::u8 X,
                   const mtl::u8 Y,
                   Clock &clock) noexcept {
-    if (addressing == Addressing::Immediate) return read(memory, PC++, clock);
+    if (std::holds_alternative<immediate_t>(addressing)) return read(memory, PC++, clock);
 
-    const auto address = fetch_address(addressing, memory, PC, X, Y, clock);
+    if (!std::holds_alternative<MemoryAddressing>(addressing))
+        mtl::panic("Unsupported addressing mode for reading from memory");
+    const auto address = fetch_address(std::get<MemoryAddressing>(addressing), memory, PC, X, Y, clock);
     return read(memory, address, clock);
 }
 

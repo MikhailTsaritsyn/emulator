@@ -10,18 +10,9 @@
 
 namespace emulator::mos_6502 {
 /**
- * The 6502 processors provide several ways in which memory locations can be addressed.
- * Some instructions support several different modes while others may only support one.
- * In addition, the two index registers cannot always be used interchangeably.
- * This lack of orthogonality in the instruction set is one of the features that make the 6502 trickier to program well.
+ * @brief Addressing modes that require to fetch an address first to read data from memory
  */
-enum struct Addressing : uint8_t {
-    /**
-     * Some instructions can operate directly upon the accumulator.
-     * The programmer specifies this by using a special operand value, 'A'.
-     */
-    Accumulator,
-
+enum struct MemoryAddressing : uint8_t {
     /**
      * Instructions using absolute addressing contain a full 16-bit address to identify the target location.
      */
@@ -42,19 +33,6 @@ enum struct Addressing : uint8_t {
      * for example, $2000 + $92.
      */
     AbsoluteY,
-
-    /**
-     * For many 6502 instructions the source and destination of the information to be manipulated is implied directly
-     * by the function of the instruction itself, and no further operand needs to be specified.
-     * Operations like Clear Carry Flag (CLC) and Return from Subroutine (RTS) are implicit.
-     */
-    Implicit,
-
-    /**
-     * Immediate addressing allows the programmer to directly specify an 8-bit constant within the instruction.
-     * It is indicated by a '#' symbol followed by a numeric expression.
-     */
-    Immediate,
 
     /**
     * JMP is the only 6502 instruction to support indirection.
@@ -79,14 +57,6 @@ enum struct Addressing : uint8_t {
      * The Y register is dynamically added to this value to generate the actual target address for operation.
      */
     IndirectIndexed,
-
-    /**
-     * Relative addressing mode is used by branch instructions, for example, BEQ, BNE, etc., which contain a
-     * signed 8-bit relative offset, for example, -128 to +127, which is added to program counter if the condition is true.
-     * As the program counter itself is incremented during instruction execution by two, the effective address range
-     * for the target instruction must be with -126 to +129 bytes of the branch.
-     */
-    Relative,
 
     /**
      * An instruction using zero page addressing mode has only an 8-bit address operand.
@@ -117,6 +87,41 @@ enum struct Addressing : uint8_t {
      */
     ZeroPageY
 };
+
+/**
+ * Some instructions can operate directly upon the accumulator.
+ * The programmer specifies this by using a special operand value, 'A'.
+ */
+struct accumulator_t {};
+
+/**
+ * For many 6502 instructions the source and destination of the information to be manipulated is implied directly
+ * by the function of the instruction itself, and no further operand needs to be specified.
+ * Operations like Clear Carry Flag (CLC) and Return from Subroutine (RTS) are implicit.
+ */
+struct implicit_t {};
+
+/**
+ * Immediate addressing allows the programmer to directly specify an 8-bit constant within the instruction.
+ * It is indicated by a '#' symbol followed by a numeric expression.
+ */
+struct immediate_t {};
+
+/**
+ * Relative addressing mode is used by branch instructions, for example, BEQ, BNE, etc., which contain a
+ * signed 8-bit relative offset, for example, -128 to +127, which is added to program counter if the condition is true.
+ * As the program counter itself is incremented during instruction execution by two, the effective address range
+ * for the target instruction must be with -126 to +129 bytes of the branch.
+ */
+struct relative_t {};
+
+/**
+ * The 6502 processors provide several ways in which memory locations can be addressed.
+ * Some instructions support several different modes while others may only support one.
+ * In addition, the two index registers cannot always be used interchangeably.
+ * This lack of orthogonality in the instruction set is one of the features that make the 6502 trickier to program well.
+ */
+using Addressing = std::variant<accumulator_t, implicit_t, immediate_t, relative_t, MemoryAddressing>;
 
 enum class Instruction : uint8_t {
     /**
