@@ -57,31 +57,6 @@ public:
 
 private:
     /**
-     * @brief The argument of the current operation os the accumulator
-     */
-    struct accumulator_t {};
-
-    /**
-     * @brief The current operation has no arguments
-     */
-    struct implicit_t {};
-
-    /**
-     * @brief The argument of the current operation is written right after the opcode
-     */
-    struct immediate_t {};
-
-    /**
-     * @brief The branching offset is written right after the opcode
-     */
-    struct relative_t {};
-
-    /**
-     * @broef Address where to fetch the argument of the current operation
-     */
-    using Address = std::variant<accumulator_t, implicit_t, immediate_t, relative_t, mtl::u16>;
-
-    /**
      * @brief Determine the address of the current instruction's argument
      *
      * @param[in]      addressing Addressing mode of the instruction
@@ -91,7 +66,7 @@ private:
      * @param[in]      y Index register Y
      * @param[in, out] clock Emulated CPU clock
      */
-    [[nodiscard]] static Address fetch_address(
+    [[nodiscard]] static mtl::u16 fetch_address(
             Addressing addressing, const Memory &memory, mtl::u16 &pc, mtl::u8 x, mtl::u8 y, Clock &clock) noexcept;
 
     [[nodiscard]] static mtl::u16 fetch_absolute_address(const Memory &memory, mtl::u16 &pc, Clock &clock) noexcept;
@@ -157,27 +132,21 @@ private:
                           StatusRegister &SR,
                           Clock &clock,
                           Func &&func) noexcept {
-        if (addressing == Addressing::AbsoluteX) {
-            const auto address = fetch_absolute_address_long(memory, PC, X, clock);
+        if (addressing == Addressing::Accumulator) {
+            clock.wait_for_pulse();
+            std::tie(AC, SR.carry)             = std::forward<Func>(func)(AC);
+            std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC);
+        } else {
+            const auto address = addressing == Addressing::AbsoluteX
+                                         ? fetch_absolute_address_long(memory, PC, X, clock)
+                                         : fetch_address(addressing, memory, PC, X, Y, clock);
             const auto arg     = read(memory, address, clock);
             clock.wait_for_pulse();
             mtl::u8 result;
             std::tie(result, SR.carry)             = std::forward<Func>(func)(arg);
             std::tie(result, SR.zero, SR.negative) = value_with_flags(result);
             write(memory, address, result, clock);
-        } else if (const auto address = fetch_address(addressing, memory, PC, X, Y, clock);
-                   std::holds_alternative<accumulator_t>(address)) {
-            clock.wait_for_pulse();
-            std::tie(AC, SR.carry)             = std::forward<Func>(func)(AC);
-            std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC);
-        } else if (std::holds_alternative<mtl::u16>(address)) {
-            const auto arg = read(memory, std::get<mtl::u16>(address), clock);
-            clock.wait_for_pulse();
-            mtl::u8 result;
-            std::tie(result, SR.carry)             = std::forward<Func>(func)(arg);
-            std::tie(result, SR.zero, SR.negative) = value_with_flags(result);
-            write(memory, std::get<mtl::u16>(address), result, clock);
-        } else mtl::panic("Unsupported addressing mode for shift/rotate");
+        }
     }
 
     /**
@@ -242,6 +211,11 @@ private:
     [[nodiscard]] static std::tuple<mtl::u16, mtl::u8, StatusRegister>
     return_from_interrupt(const Memory &memory, mtl::u16 pc, mtl::u8 sp, Clock &clock) noexcept;
 
+    /**
+     * @brief Special case of absolute addressing used in some commands
+     *
+     * Wastes additional clock cycles, hence the name.
+     */
     [[nodiscard]] static mtl::u16
     fetch_absolute_address_long(const Memory &memory, mtl::u16 &pc, mtl::u8 index, Clock &clock) noexcept;
 
