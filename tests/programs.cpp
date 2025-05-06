@@ -491,4 +491,93 @@ TEST_F(Program, Xor) {
     EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
     EXPECT_EQ(memory[mtl::u16(ADDR_RESULT)], 0b01010000);             // 0b10101111 ^ 0b11111111 = 0b01010000
 }
+
+/**
+ * @brief Example 4.4: Illustration of "branch on carry set"
+ *
+ * Arguments:
+ * 1. ADDR1 - absolute address of the first argument
+ * 2. ADDR2 - absolute address of the second argument
+ * 3. ADDR_RES - absolute address of the result
+ *
+ * @code
+ * LDA ADDR1; opcode at address 0x0200
+ * ADC ADDR2
+ * BCS *+50
+ * STA ADDR_RES
+ * SED; opcode at address 0x0258, set decimal just to check that we were here
+ * @endcode
+ */
+TEST_F(Program, BranchOnCarrySet) {
+    constexpr mtl::u16 ADDR1{ 0x0300 };
+    constexpr mtl::u16 ADDR2{ 0x0302 };
+    constexpr mtl::u16 ADDR_RES{ 0x0304 };
+    constexpr mtl::u8 OFFSET{ 0x50 };
+    constexpr mtl::u16 BRANCH_ADDR{ 0x258 + 1 }; // to account for the prepended CLI
+
+    std::vector code{
+        mtl::u8{ 0xAD }, // LDA absolute: 3 bytes, 4 cycles
+        low_byte(ADDR1),
+        high_byte(ADDR1),
+        mtl::u8{ 0x6D }, // ADC absolute: 3 bytes, 4 cycles
+        low_byte(ADDR2),
+        high_byte(ADDR2),
+        mtl::u8{ 0xB0 }, // BCS: 2 bytes, 2 cycles if fails, 3 if succeeds, 4 if to a new page
+        OFFSET,
+        mtl::u8{ 0x8D }, // STA absolute: 3 bytes, 4 cycles
+        low_byte(ADDR_RES),
+        high_byte(ADDR_RES),
+    };
+
+    // insert the code to the memory
+    auto [data, program_end] = assemble(code);
+
+    // populate the branch
+    data[BRANCH_ADDR.to_underlying()]     = mtl::u8{ 0xF8 }; // SED: 1 byte, 2 cycles
+    data[BRANCH_ADDR.to_underlying() + 1] = HLT;
+
+    { // branch not successful
+        constexpr size_t code_duration = 4 + 4 + 2 + 4;
+
+        // initialize the arguments
+        data[ADDR1.to_underlying()] = mtl::u8(0x44);
+        data[ADDR2.to_underlying()] = mtl::u8(0x29);
+
+        // execute the program
+        Clock clock(std::chrono::nanoseconds(0));
+        Memory memory{ data };
+        Registers registers{};
+        CPU cpu{};
+        cpu.start(memory, clock, registers);
+
+        // check the results
+        EXPECT_EQ(registers.PC, program_end);                           // 1 for CLI and 1 for HLT
+        EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
+        EXPECT_EQ(memory[ADDR_RES], 0x6D);                              // 0x44 + 0x29 = 0x6D
+        EXPECT_FALSE(registers.SR.carry);                               // precondition for the branch to not happen
+    }
+
+    { // branch successful
+        constexpr size_t code_duration = 4 + 4 + 3 + 2;
+
+        // initialize the arguments
+        data[ADDR1.to_underlying()]    = mtl::u8(0xFF);
+        data[ADDR2.to_underlying()]    = mtl::u8(0xFF);
+        data[ADDR_RES.to_underlying()] = mtl::u8(0x12); // canary value
+
+        // execute the program
+        Clock clock(std::chrono::nanoseconds(0));
+        Memory memory{ data };
+        Registers registers{};
+        CPU cpu{};
+        cpu.start(memory, clock, registers);
+
+        // check the results
+        EXPECT_EQ(registers.PC, BRANCH_ADDR + mtl::u16{2});                           // 1 for SED and 1 for HLT
+        EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
+        EXPECT_EQ(memory[ADDR_RES], 0x12);                              // the canary
+        EXPECT_TRUE(registers.SR.carry);                                // precondition for the branch
+        EXPECT_TRUE(registers.SR.decimal);                              // check that instruction after branch executed
+    }
+}
 } // namespace emulator::mos_6502::test
