@@ -873,4 +873,125 @@ TEST(Program, CMP) {
         EXPECT_EQ(memory[mtl::u16(ADDR_RES)], COUNT3);
     }
 }
+
+/**
+ * @brief Example 4.8: Sample program using the bit test
+ *
+ * @code
+ * LDA #MASK
+ * BIT ADDR1
+ * BNE *+50
+ * BIT ADDR2; label1
+ * BNE *-75
+ * ; label2
+ * @endcode
+ */
+TEST(Program, BIT) {
+    constexpr mtl::u16 ADDR1{ 0x0200 };
+    constexpr mtl::u16 ADDR2{ 0x0202 };
+    constexpr mtl::u16 ADDR_RES{ 0x0206 };
+
+    constexpr mtl::u8 RESULT1{ 1 };
+    constexpr mtl::u8 RESULT2{ 2 };
+
+    constexpr mtl::u16 MAIN_ADDR{ 0x0300 };
+    constexpr mtl::u8 OFFSET1{ 0x50 };
+    constexpr mtl::u16 BRANCH1_ADDR{ 0x0357 }; // label1 + OFFSET1
+    constexpr auto OFFSET2 = std::bit_cast<mtl::u8>(mtl::i8{ -0x75 });
+    constexpr mtl::u16 BRANCH2_ADDR{ 0x0297 }; // label2 + OFFSET2
+
+    constexpr mtl::u8 MASK{ 0b01010101 };
+
+    const std::vector main{ mtl::u8{ 0xA9 }, // LDA immediate: 2 bytes, 2 cycles
+                            MASK,
+                            mtl::u8{ 0x2C }, // BIT absolute: 3 bytes, 4 cycles
+                            low_byte(ADDR1),
+                            high_byte(ADDR1),
+                            mtl::u8{ 0xD0 }, // BNE: 1 byte, 2 cycles if fails, 3 if succeeds, 4 if to a new page
+                            OFFSET1,
+                            mtl::u8{ 0x2C }, // BIT absolute: 3 bytes, 4 cycles
+                            low_byte(ADDR2),
+                            high_byte(ADDR2),
+                            mtl::u8{ 0xD0 }, // BNE: 1 byte, 2 cycles if fails, 3 if succeeds, 4 if to a new page
+                            OFFSET2,
+                            HLT };
+    constexpr size_t main_duration_no_branch = 2 + 4 + 2 + 4 + 2;
+    constexpr size_t main_duration_branch1   = 2 + 4 + 3;
+    constexpr size_t main_duration_branch2   = 2 + 4 + 2 + 4 + 4;
+
+    const std::vector branch1{ mtl::u8{ 0xA9 }, // LDA immediate: 2 bytes, 2 cycles
+                               RESULT1,
+                               mtl::u8{ 0x8D }, // STA absolute: 3 bytes, 4 cycles
+                               low_byte(ADDR_RES),
+                               high_byte(ADDR_RES),
+                               HLT };
+    const std::vector branch2{ mtl::u8{ 0xA9 }, // LDA immediate: 2 bytes, 2 cycles
+                               RESULT2,
+                               mtl::u8{ 0x8D }, // STA absolute: 3 bytes, 4 cycles
+                               low_byte(ADDR_RES),
+                               high_byte(ADDR_RES),
+                               HLT };
+    constexpr size_t branch_duration = 6;
+
+    // assemble the code
+    auto data = linker::assemble(
+            { main, MAIN_ADDR },
+            { { branch1, BRANCH1_ADDR }, { branch2, BRANCH2_ADDR } });
+
+    { // no exiting the main
+        // initialize the arguments
+        data[ADDR1.to_underlying()]    = ~MASK;
+        data[ADDR2.to_underlying()]    = ~MASK;
+        data[ADDR_RES.to_underlying()] = mtl::u8(0x12); // a canary
+
+        // execute the program
+        Clock clock(std::chrono::nanoseconds(0));
+        Memory memory{ data };
+        Registers registers{};
+        CPU cpu{};
+        cpu.start(memory, clock, registers);
+
+        // check the results
+        EXPECT_EQ(registers.PC, MAIN_ADDR + mtl::StrongInt{ main.size() }.unsafe_cast<uint16_t>());
+        EXPECT_EQ(clock.cycle(), main_duration_no_branch + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
+        EXPECT_EQ(memory[mtl::u16(ADDR_RES)], 0x12);                              // the canary
+    }
+
+    { // branch on the first check
+        // initialize the arguments (the second one does not matter)
+        data[ADDR1.to_underlying()] = (~MASK).next(); // anything but the inverted mask
+
+        // execute the program
+        Clock clock(std::chrono::nanoseconds(0));
+        Memory memory{ data };
+        Registers registers{};
+        CPU cpu{};
+        cpu.start(memory, clock, registers);
+
+        // check the results
+        EXPECT_EQ(registers.PC, BRANCH1_ADDR + mtl::StrongInt{ branch1.size() }.unsafe_cast<uint16_t>());
+        EXPECT_EQ(clock.cycle(),
+                  main_duration_branch1 + branch_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
+        EXPECT_EQ(memory[mtl::u16(ADDR_RES)], RESULT1);
+    }
+
+    { // branch on the second check
+        // initialize the arguments
+        data[ADDR1.to_underlying()] = ~MASK;
+        data[ADDR2.to_underlying()] = (~MASK).prev(); // anything but the inverted mask
+
+        // execute the program
+        Clock clock(std::chrono::nanoseconds(0));
+        Memory memory{ data };
+        Registers registers{};
+        CPU cpu{};
+        cpu.start(memory, clock, registers);
+
+        // check the results
+        EXPECT_EQ(registers.PC, BRANCH2_ADDR + mtl::StrongInt{ branch2.size() }.unsafe_cast<uint16_t>());
+        EXPECT_EQ(clock.cycle(),
+                  main_duration_branch2 + branch_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
+        EXPECT_EQ(memory[mtl::u16(ADDR_RES)], RESULT2);
+    }
+}
 } // namespace emulator::mos_6502::test
