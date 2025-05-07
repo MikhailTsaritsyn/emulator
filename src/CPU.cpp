@@ -38,34 +38,51 @@ mtl::u16 CPU::fetch_address(const MemoryAddressing addressing,
                             mtl::u16 &pc,
                             const mtl::u8 x,
                             const mtl::u8 y,
-                            Clock &clock) noexcept {
+                            Clock &clock,
+                            const bool waste_cycle) noexcept {
     switch (addressing) {
-    case MemoryAddressing::Absolute: return fetch_absolute_address(memory, pc, clock);
-    case MemoryAddressing::AbsoluteX: return fetch_absolute_address(memory, pc, x, clock);
-    case MemoryAddressing::AbsoluteY: return fetch_absolute_address(memory, pc, y, clock);
+    case MemoryAddressing::Absolute: return fetch_absolute_address(memory, pc, clock, waste_cycle);
+    case MemoryAddressing::AbsoluteX: return fetch_absolute_address(memory, pc, x, clock, waste_cycle);
+    case MemoryAddressing::AbsoluteY: return fetch_absolute_address(memory, pc, y, clock, waste_cycle);
     case MemoryAddressing::IndexedIndirect: return fetch_indexed_indirect_address(memory, pc, x, clock);
     case MemoryAddressing::IndirectIndexed: return fetch_indirect_indexed_address(memory, pc, y, clock);
-    case MemoryAddressing::ZeroPage: return fetch_zero_page_address(memory, pc, clock);
-    case MemoryAddressing::ZeroPageX: return fetch_zero_page_address(memory, pc, x, clock);
-    case MemoryAddressing::ZeroPageY: return fetch_zero_page_address(memory, pc, y, clock);
+    case MemoryAddressing::ZeroPage: return fetch_zero_page_address(memory, pc, clock, waste_cycle);
+    case MemoryAddressing::ZeroPageX: return fetch_zero_page_address(memory, pc, x, clock, waste_cycle);
+    case MemoryAddressing::ZeroPageY: return fetch_zero_page_address(memory, pc, y, clock, waste_cycle);
     case MemoryAddressing::Indirect: return fetch_indirect_address(memory, pc, clock);
     }
     std::unreachable();
 }
 
-mtl::u16 CPU::fetch_absolute_address(const Memory &memory, mtl::u16 &pc, Clock &clock) noexcept {
+mtl::u16
+CPU::fetch_absolute_address(const Memory &memory, mtl::u16 &pc, Clock &clock, const bool waste_cycle) noexcept {
     const auto address_low  = read(memory, pc++, clock);
     const auto address_high = read(memory, pc++, clock);
+
+    if (waste_cycle)
+        // This cycle is wasted because read/modify/write instruction should wait
+        // until the carry has been added to the address high
+        // to avoid writing a false memory location
+        read(memory, make_word(address_high, address_low), clock); // this data is discarded
+
     return make_word(address_high, address_low);
 }
 
-mtl::u16 CPU::fetch_absolute_address(const Memory &memory, mtl::u16 &pc, const mtl::u8 index, Clock &clock) noexcept {
+mtl::u16 CPU::fetch_absolute_address(
+        const Memory &memory, mtl::u16 &pc, const mtl::u8 index, Clock &clock, const bool waste_cycle) noexcept {
     const auto bal                     = read(memory, pc++, clock);
     const auto bah                     = read(memory, pc++, clock);
     const auto [bal_updated, overflow] = add_with_overflow(bal, index);
     const auto address                 = make_word(bah, bal_updated);
     if (!overflow) return address;
     read(memory, address, clock);
+
+    if (waste_cycle)
+        // This cycle is wasted because read/modify/write instruction should wait
+        // until the carry has been added to the address high
+        // to avoid writing a false memory location
+        read(memory, make_word(bah, bal_updated), clock); // this data is discarded
+
     return make_word(bah.next(), bal_updated);
 }
 
@@ -99,13 +116,28 @@ CPU::fetch_indirect_indexed_address(const Memory &memory, mtl::u16 &pc, const mt
     return make_word(bah.next(), bal_updated);
 }
 
-mtl::u16 CPU::fetch_zero_page_address(const Memory &memory, mtl::u16 &pc, Clock &clock) noexcept {
-    return mtl::u16(read(memory, pc++, clock));
+mtl::u16
+CPU::fetch_zero_page_address(const Memory &memory, mtl::u16 &pc, Clock &clock, const bool waste_cycle) noexcept {
+    const auto adl = read(memory, pc++, clock);
+    if (waste_cycle)
+        // This cycle is wasted because read/modify/write instruction should wait
+        // until the carry has been added to the address high
+        // to avoid writing a false memory location
+        read(memory, mtl::u16(adl), clock); // this data is discarded
+    return mtl::u16(adl);
 }
 
-mtl::u16 CPU::fetch_zero_page_address(const Memory &memory, mtl::u16 &pc, const mtl::u8 index, Clock &clock) noexcept {
+mtl::u16 CPU::fetch_zero_page_address(
+        const Memory &memory, mtl::u16 &pc, const mtl::u8 index, Clock &clock, const bool waste_cycle) noexcept {
     const auto adl = read(memory, pc++, clock);
     read(memory, mtl::u16(adl), clock); // This data is ignored
+
+    if (waste_cycle)
+        // This cycle is wasted because read/modify/write instruction should wait
+        // until the carry has been added to the address high
+        // to avoid writing a false memory location
+        read(memory, mtl::u16(adl), clock); // this data is discarded
+
     return make_word(mtl::u8(0), adl + index);
 }
 
@@ -433,11 +465,8 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
     case Instruction::INC: {
         if (!std::holds_alternative<MemoryAddressing>(*addressing)) mtl::panic("Unsupported addressing mode for INC");
         const auto memory_addressing = std::get<MemoryAddressing>(*addressing);
-        // FIXME: for increment and decrement, all address fetches take up one more cycle
         const auto address =
-                memory_addressing == MemoryAddressing::AbsoluteX
-                        ? fetch_absolute_address_long(memory, registers.PC, registers.X, clock)
-                        : fetch_address(memory_addressing, memory, registers.PC, registers.X, registers.Y, clock);
+                fetch_address(memory_addressing, memory, registers.PC, registers.X, registers.Y, clock, true);
         const auto arg = read(memory, address, clock);
         write(memory, address, arg.next(), clock);
     } break;
@@ -446,9 +475,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
         if (!std::holds_alternative<MemoryAddressing>(*addressing)) mtl::panic("Unsupported addressing mode for DEC");
         const auto memory_addressing = std::get<MemoryAddressing>(*addressing);
         const auto address =
-                memory_addressing == MemoryAddressing::AbsoluteX
-                        ? fetch_absolute_address_long(memory, registers.PC, registers.X, clock)
-                        : fetch_address(memory_addressing, memory, registers.PC, registers.X, registers.Y, clock);
+                fetch_address(memory_addressing, memory, registers.PC, registers.X, registers.Y, clock, true);
         const auto arg = read(memory, address, clock);
         write(memory, address, arg.prev(), clock);
     } break;
@@ -556,20 +583,6 @@ CPU::return_from_interrupt(const Memory &memory, mtl::u16 pc, mtl::u8 sp, Clock 
     const auto pcl = read(memory, make_word(mtl::u8(0x01), sp++), clock);
     const auto pch = read(memory, make_word(mtl::u8(0x01), sp++), clock);
     return { make_word(pch, pcl), sp, sr };
-}
-
-mtl::u16
-CPU::fetch_absolute_address_long(const Memory &memory, mtl::u16 &pc, const mtl::u8 index, Clock &clock) noexcept {
-    const auto adl           = read(memory, pc++, clock);
-    const auto adh           = read(memory, pc++, clock);
-    const auto [adlx, carry] = add_with_overflow(adl, index);
-
-    // This cycle is wasted because read/modify/write instruction should wait
-    // until the carry has been added to the address high
-    // to avoid writing a false memory location
-    read(memory, make_word(adh, adlx), clock); // this data is discarded
-
-    return make_word(carry ? adh.next() : adh, adlx);
 }
 
 std::tuple<mtl::u8, bool, bool> CPU::value_with_flags(const mtl::u8 src) noexcept {

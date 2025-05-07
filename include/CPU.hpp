@@ -65,18 +65,22 @@ private:
      * @param[in]      x Index register X
      * @param[in]      y Index register Y
      * @param[in, out] clock Emulated CPU clock
+     * @param[in]      waste_cycle In some cases, absolute (indexed) and zero page (indexed) modes
+     *                             take an additional cycle
      */
     [[nodiscard]] static mtl::u16 fetch_address(MemoryAddressing addressing,
                                                 const Memory &memory,
                                                 mtl::u16 &pc,
                                                 mtl::u8 x,
                                                 mtl::u8 y,
-                                                Clock &clock) noexcept;
-
-    [[nodiscard]] static mtl::u16 fetch_absolute_address(const Memory &memory, mtl::u16 &pc, Clock &clock) noexcept;
+                                                Clock &clock,
+                                                bool waste_cycle = false) noexcept;
 
     [[nodiscard]] static mtl::u16
-    fetch_absolute_address(const Memory &memory, mtl::u16 &pc, mtl::u8 index, Clock &clock) noexcept;
+    fetch_absolute_address(const Memory &memory, mtl::u16 &pc, Clock &clock, bool waste_cycle) noexcept;
+
+    [[nodiscard]] static mtl::u16
+    fetch_absolute_address(const Memory &memory, mtl::u16 &pc, mtl::u8 index, Clock &clock, bool waste_cycle) noexcept;
 
     [[nodiscard]] static mtl::u16 fetch_indirect_address(const Memory &memory, mtl::u16 &pc, Clock &clock) noexcept;
 
@@ -86,10 +90,11 @@ private:
     [[nodiscard]] static mtl::u16
     fetch_indirect_indexed_address(const Memory &memory, mtl::u16 &pc, mtl::u8 y, Clock &clock) noexcept;
 
-    [[nodiscard]] static mtl::u16 fetch_zero_page_address(const Memory &memory, mtl::u16 &pc, Clock &clock) noexcept;
+    [[nodiscard]] static mtl::u16
+    fetch_zero_page_address(const Memory &memory, mtl::u16 &pc, Clock &clock, bool waste_cycle) noexcept;
 
     [[nodiscard]] static mtl::u16
-    fetch_zero_page_address(const Memory &memory, mtl::u16 &pc, mtl::u8 index, Clock &clock) noexcept;
+    fetch_zero_page_address(const Memory &memory, mtl::u16 &pc, mtl::u8 index, Clock &clock, bool waste_cycle) noexcept;
 
     [[nodiscard]] static bool decode_and_execute(mtl::u8 opcode, Clock &clock, Memory &memory, Registers &registers);
 
@@ -142,9 +147,7 @@ private:
             std::tie(AC, SR.zero, SR.negative) = value_with_flags(AC);
         } else if (std::holds_alternative<MemoryAddressing>(addressing)) {
             const auto memory_addressing = std::get<MemoryAddressing>(addressing);
-            const auto address           = memory_addressing == MemoryAddressing::AbsoluteX
-                                                   ? fetch_absolute_address_long(memory, PC, X, clock)
-                                                   : fetch_address(memory_addressing, memory, PC, X, Y, clock);
+            const auto address           = fetch_address(memory_addressing, memory, PC, X, Y, clock, true);
             const auto arg     = read(memory, address, clock);
             clock.wait_for_pulse();
             mtl::u8 result;
@@ -215,14 +218,6 @@ private:
      */
     [[nodiscard]] static std::tuple<mtl::u16, mtl::u8, StatusRegister>
     return_from_interrupt(const Memory &memory, mtl::u16 pc, mtl::u8 sp, Clock &clock) noexcept;
-
-    /**
-     * @brief Special case of absolute addressing used in some commands
-     *
-     * Wastes additional clock cycles, hence the name.
-     */
-    [[nodiscard]] static mtl::u16
-    fetch_absolute_address_long(const Memory &memory, mtl::u16 &pc, mtl::u8 index, Clock &clock) noexcept;
 
     /**
      * @param src The new value
