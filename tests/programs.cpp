@@ -724,4 +724,153 @@ TEST(Program, JumpOutOfRange) {
         EXPECT_TRUE(registers.SR.interrupt_disable); // result of the jump code
     }
 }
+
+/**
+ * @brief Example 4.7: Using the CMP instruction
+ *
+ * @code
+ * LDA ADDR
+ * CMP #COUNT1
+ * BEQ OFFSET1
+ * CMP #COUNT2
+ * BEQ OFFSET2
+ * CMP #COUNT3
+ * BEQ OFFSET3
+ * @endcode
+ */
+TEST(Program, CMP) {
+    constexpr mtl::u16 ADDR{ 0x0200 };
+    constexpr mtl::u8 ADDR_RES{ 0x00 };
+
+    constexpr mtl::u16 MAIN_ADDR{ 0x0300 };
+    constexpr mtl::u8 OFFSET1{ 0x30 };
+    constexpr mtl::u8 OFFSET2{ 0x40 };
+    constexpr mtl::u8 OFFSET3{ 0x50 };
+
+    constexpr mtl::u16 BRANCH1_ADDR{ 0x0337 };
+    constexpr mtl::u16 BRANCH2_ADDR{ 0x034b };
+    constexpr mtl::u16 BRANCH3_ADDR{ 0x035f };
+
+    constexpr mtl::u8 COUNT1{ 0x01 };
+    constexpr mtl::u8 COUNT2{ 0x02 };
+    constexpr mtl::u8 COUNT3{ 0x03 };
+
+    const std::vector main{ mtl::u8{ 0xAD }, // LDA absolute: 3 bytes, 4 cycles
+                            low_byte(ADDR),
+                            high_byte(ADDR),
+                            mtl::u8{ 0xC9 },
+                            COUNT1, // CMP immediate: 2 bytes, 2 cycles
+                            mtl::u8{ 0xF0 },
+                            OFFSET1, // BEQ: 1 byte, 2 cycles if fails, 3 if succeeds, 4 if to a new page
+                            mtl::u8{ 0xC9 },
+                            COUNT2, // CMP immediate: 2 bytes, 2 cycles
+                            mtl::u8{ 0xF0 },
+                            OFFSET2, // BEQ: 1 byte, 2 cycles if fails, 3 if succeeds, 4 if to a new page
+                            mtl::u8{ 0xC9 },
+                            COUNT3, // CMP immediate: 2 bytes, 2 cycles
+                            mtl::u8{ 0xF0 },
+                            OFFSET3, // BEQ: 1 byte, 2 cycles if fails, 3 if succeeds, 4 if to a new page
+                            HLT };
+    constexpr size_t main_duration_first_branch  = 4 + 2 + 3;
+    constexpr size_t main_duration_second_branch = 4 + 2 + 2 + 2 + 3;
+    constexpr size_t main_duration_third_branch  = 4 + 2 + 2 + 2 + 2 + 2 + 3;
+    constexpr size_t main_duration_no_branch     = 4 + 2 + 2 + 2 + 2 + 2 + 2;
+
+    const std::vector branch1{ mtl::u8{ 0xA9 }, // LDA immediate: 2 bytes, 2 cycles
+                               COUNT1,
+                               mtl::u8{ 0x85 }, // STA zero page: 2 bytes, 3 cycles
+                               ADDR_RES,
+                               HLT };
+    const std::vector branch2{ mtl::u8{ 0xA9 }, // LDA immediate: 2 bytes, 2 cycles
+                               COUNT2,
+                               mtl::u8{ 0x85 }, // STA zero page: 2 bytes, 3 cycles
+                               ADDR_RES,
+                               HLT };
+    const std::vector branch3{ mtl::u8{ 0xA9 }, // LDA immediate: 2 bytes, 2 cycles
+                               COUNT3,
+                               mtl::u8{ 0x85 }, // STA zero page: 2 bytes, 3 cycles
+                               ADDR_RES,
+                               HLT };
+    constexpr size_t branch_duration = 5;
+
+    // assemble the code
+    auto data = linker::assemble(
+            { main, MAIN_ADDR },
+            { { branch1, BRANCH1_ADDR }, { branch2, BRANCH2_ADDR }, { branch3, BRANCH3_ADDR } });
+
+    { // no exiting the main
+        // initialize the argument
+        data[ADDR.to_underlying()]     = mtl::u8(0x04); // none of the counts
+        data[ADDR_RES.to_underlying()] = mtl::u8(0x12); // a canary
+
+        // execute the program
+        Clock clock(std::chrono::nanoseconds(0));
+        Memory memory{ data };
+        Registers registers{};
+        CPU cpu{};
+        cpu.start(memory, clock, registers);
+
+        // check the results
+        EXPECT_EQ(registers.PC, MAIN_ADDR + mtl::StrongInt{ main.size() }.unsafe_cast<uint16_t>());
+        EXPECT_EQ(clock.cycle(), main_duration_no_branch + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
+        EXPECT_EQ(memory[mtl::u16(ADDR_RES)], 0x12);                              // the canary
+    }
+
+    { // branch on the first check
+        // initialize the argument
+        data[ADDR.to_underlying()]     = COUNT1;
+        data[ADDR_RES.to_underlying()] = mtl::u8(0x12); // a canary
+
+        // execute the program
+        Clock clock(std::chrono::nanoseconds(0));
+        Memory memory{ data };
+        Registers registers{};
+        CPU cpu{};
+        cpu.start(memory, clock, registers);
+
+        // check the results
+        EXPECT_EQ(registers.PC, BRANCH1_ADDR + mtl::StrongInt{ branch1.size() }.unsafe_cast<uint16_t>());
+        EXPECT_EQ(clock.cycle(),
+                  main_duration_first_branch + branch_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
+        EXPECT_EQ(memory[mtl::u16(ADDR_RES)], COUNT1);
+    }
+
+    { // branch on the second check
+        // initialize the argument
+        data[ADDR.to_underlying()]     = COUNT2;
+        data[ADDR_RES.to_underlying()] = mtl::u8(0x12); // a canary
+
+        // execute the program
+        Clock clock(std::chrono::nanoseconds(0));
+        Memory memory{ data };
+        Registers registers{};
+        CPU cpu{};
+        cpu.start(memory, clock, registers);
+
+        // check the results
+        EXPECT_EQ(registers.PC, BRANCH2_ADDR + mtl::StrongInt{ branch2.size() }.unsafe_cast<uint16_t>());
+        EXPECT_EQ(clock.cycle(),
+                  main_duration_second_branch + branch_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
+        EXPECT_EQ(memory[mtl::u16(ADDR_RES)], COUNT2);
+    }
+
+    { // branch on the third check
+        // initialize the argument
+        data[ADDR.to_underlying()]     = COUNT3;
+        data[ADDR_RES.to_underlying()] = mtl::u8(0x12); // a canary
+
+        // execute the program
+        Clock clock(std::chrono::nanoseconds(0));
+        Memory memory{ data };
+        Registers registers{};
+        CPU cpu{};
+        cpu.start(memory, clock, registers);
+
+        // check the results
+        EXPECT_EQ(registers.PC, BRANCH3_ADDR + mtl::StrongInt{ branch3.size() }.unsafe_cast<uint16_t>());
+        EXPECT_EQ(clock.cycle(),
+                  main_duration_third_branch + branch_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
+        EXPECT_EQ(memory[mtl::u16(ADDR_RES)], COUNT3);
+    }
+}
 } // namespace emulator::mos_6502::test
