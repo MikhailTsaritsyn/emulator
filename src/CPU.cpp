@@ -433,6 +433,7 @@ bool CPU::decode_and_execute(const mtl::u8 opcode, Clock &clock, Memory &memory,
     case Instruction::INC: {
         if (!std::holds_alternative<MemoryAddressing>(*addressing)) mtl::panic("Unsupported addressing mode for INC");
         const auto memory_addressing = std::get<MemoryAddressing>(*addressing);
+        // FIXME: for increment and decrement, all address fetches take up one more cycle
         const auto address =
                 memory_addressing == MemoryAddressing::AbsoluteX
                         ? fetch_absolute_address_long(memory, registers.PC, registers.X, clock)

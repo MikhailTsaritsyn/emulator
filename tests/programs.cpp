@@ -11,6 +11,7 @@
 #include "helpers.hpp"
 #include "linker.hpp"
 #include <gtest/gtest.h>
+#include <numeric>
 
 namespace emulator::mos_6502::test {
 /**
@@ -993,5 +994,79 @@ TEST(Program, BIT) {
                   main_duration_branch2 + branch_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
         EXPECT_EQ(memory[mtl::u16(ADDR_RES)], RESULT2);
     }
+}
+
+/**
+ * @brief Example 6.2: Moving five bytes of data with loop
+ *
+ * @code
+ * .MAIN:
+ * CLC
+ * .SOURCE:
+ * LDA ADDR_SRC; load a byte from the source
+ * .DESTINATION:
+ * STA ADDR_DST; move the byte to the destination
+ * INC SOURCE + 1; increment the ADDR_SRC in the code
+ * INC DESTINATION + 1; increment the ADDR_DST in the code
+ * LDA DESTINATION + 1
+ * CMP #ADDR_DST + 5; compare ADDR_DST to the last address
+ * BNE .SOURCE; if end of data is not reached, jump to the start of the loop
+ * @endcode
+ */
+TEST(Program, Loop) {
+    constexpr mtl::u8 ADDR_SRC{ 0x00 };
+    constexpr mtl::u8 ADDR_DST{ 0x10 };
+
+    constexpr mtl::u16 MAIN{ 0x0300 };
+    constexpr auto SOURCE      = MAIN + mtl::u16{ 1 };
+    constexpr auto DESTINATION = SOURCE + mtl::u16{ 2 };
+
+    constexpr uint8_t MEM_SIZE = 5;
+
+    const std::vector main{ // .MAIN:
+                            mtl::u8{ 0x18 }, // CLC: 1 byte, 2 cycles
+                            // .SOURCE:
+                            mtl::u8{ 0xA5 }, // LDA zero page: 2 bytes, 3 cycles
+                            ADDR_SRC,
+                            // .DESTINATION:
+                            mtl::u8{ 0x85 }, // STA zero page: 2 bytes, 3 cycles
+                            ADDR_DST,
+                            mtl::u8{ 0xEE }, // INC absolute: 3 bytes, 6 cycles
+                            low_byte(SOURCE.next()),
+                            high_byte(SOURCE.next()),
+                            mtl::u8{ 0xEE }, // INC absolute: 3 bytes, 6 cycles
+                            low_byte(DESTINATION.next()),
+                            high_byte(DESTINATION.next()),
+                            mtl::u8{ 0xAD }, // LDA absolute: 3 bytes, 4 cycles
+                            low_byte(DESTINATION.next()),
+                            high_byte(DESTINATION.next()),
+                            mtl::u8{ 0xC9 }, // CMP immediate: 2 bytes, 2 cycles
+                            ADDR_DST + mtl::u8{ MEM_SIZE },
+                            mtl::u8{ 0xD0 }, // BNE: 1 byte, 2 cycles if fails, 3 if succeeds, 4 if to a new page
+                            std::bit_cast<mtl::u8>(mtl::i8{ -17 }),
+                            HLT
+    };
+    constexpr size_t main_duration = 2 + (3 + 3 + 6 + 6 + 4 + 2) * MEM_SIZE + 3 * (MEM_SIZE - 1) + 2;
+
+    // assemble the code
+    auto data = linker::assemble({ main, MAIN });
+
+    // initialize the source memory
+    std::iota(
+            data.begin() + ADDR_SRC.to_underlying(), data.begin() + ADDR_SRC.to_underlying() + MEM_SIZE, mtl::u8{ 1 });
+
+    // execute the program
+    Clock clock(std::chrono::nanoseconds(0));
+    Memory memory{ data };
+    Registers registers{};
+    CPU cpu{};
+    cpu.start(memory, clock, registers);
+
+    // check the results
+    EXPECT_EQ(registers.PC, MAIN + mtl::StrongInt{ main.size() }.unsafe_cast<uint16_t>());
+    EXPECT_EQ(clock.cycle(), main_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
+    // check the destination memory
+    for (uint16_t i = 0; i < MEM_SIZE; i++)
+        EXPECT_EQ(memory[mtl::u16(ADDR_DST) + mtl::u16(i)], memory[mtl::u16(ADDR_SRC) + mtl::u16(i)]) << "i = " << i;
 }
 } // namespace emulator::mos_6502::test
