@@ -9,55 +9,24 @@
 
 #include "CPU.hpp"
 #include "helpers.hpp"
-#include <mtl/panic.hpp>
+#include "linker.hpp"
 #include <gtest/gtest.h>
 
 namespace emulator::mos_6502::test {
-struct Program : public ::testing::Test {
-    /**
-     * @brief The address where the program to execute starts
-     */
-    static constexpr uint16_t PROGRAM_START = 0x0200;
+/**
+ * @brief An unsupported instruction to halt the CPU
+ *
+ * When the CPU encounters an illegal opcode, it terminates.
+ * It can be used in testing to terminate right after the provided code is executed.
+ */
+static constexpr mtl::u8 HLT{ 0x02 };
 
-    /**
-     * @brief An unsupported instruction to halt the CPU
-     *
-     * When the CPU encounters an illegal opcode, it terminates.
-     * It can be used in testing to terminate right after the provided code is executed.
-     */
-    static constexpr mtl::u8 HLT{ 0x02 };
+/**
+ * @brief Number of cycles elapsing during the startup routine
+ */
+static constexpr size_t STARTUP_DURATION = 7;
 
-    /**
-     * @brief Number of cycles elapsing during the startup routine
-     */
-    static constexpr size_t STARTUP_DURATION = 7;
-
-    /**
-     * @brief Prepare a chunk of memory containing a piece of code
-     *
-     * The code is prepended with @p CLI instruction to enable interrupts.
-     * The prepended code is inserted at the predefined @p PROGRAM_START address.
-     * The code is appended with an illegal @p HLT opcode to terminate the execution.
-     *
-     * @retval first Chunk of memory containing the code, prepared to run a CPU on it.
-     * @retval second Index in the resulting memory past the @p HLT opcode.
-     */
-    [[nodiscard]] static std::pair<Memory::Data, size_t> assemble(const std::vector<mtl::u8> &code) noexcept {
-        Memory::Data result{};
-        if (code.size() > result.size()) mtl::panic("Code is too long to fit in memory");
-
-        result[PROGRAM_START] = mtl::u8(0x58); // CLI, to clear the interrupt disable flag set at startup
-        std::ranges::copy(code, result.begin() + PROGRAM_START + 1);
-
-        result[PROGRAM_START + 1 + code.size()] = HLT;
-
-        result[CPU::RES.to_underlying()]     = low_byte(mtl::u16(PROGRAM_START));
-        result[CPU::RES.to_underlying() + 1] = high_byte(mtl::u16(PROGRAM_START));
-        return { result, PROGRAM_START + code.size() + 2 };
-    }
-};
-
-TEST_F(Program, Empty) {}
+TEST(Program, Empty) {}
 
 /// Example 2.3:
 ///
@@ -72,7 +41,7 @@ TEST_F(Program, Empty) {}
 /// LDA H1
 /// ADC H2
 /// STA H3
-TEST_F(Program, Add16Bit) {
+TEST(Program, Add16Bit) {
     constexpr uint8_t L1 = 0x00;
     constexpr uint8_t H1 = 0x01;
     constexpr uint8_t L2 = 0x02;
@@ -80,45 +49,31 @@ TEST_F(Program, Add16Bit) {
     constexpr uint8_t L3 = 0x04;
     constexpr uint8_t H3 = 0x05;
 
-    std::vector<mtl::u8> code;
-    size_t code_duration = 0;
+    constexpr mtl::u16 MAIN_ADDR{ 0x0300 };
 
-    // LDA L1
-    code.emplace_back(0xA5); // LDA zero page: 2 bytes, 3 cycles
-    code.emplace_back(L1);
-    code_duration += 3;
+    const std::vector main{ mtl::u8{ 0x18 }, // CLC: 1 byte, 2 cycles
 
-    // CLC
-    code.emplace_back(0x18); // CLC: 1 byte, 2 cycles
-    code_duration += 2;
+                            mtl::u8{ 0xA5 }, // LDA zero page: 2 bytes, 3 cycles
+                            mtl::u8{ L1 },
+                            mtl::u8{ 0x65 }, // ADC zero page: 2 bytes, 3 cycles
+                            mtl::u8{ L2 },
+                            mtl::u8{ 0x85 }, // STA zero page: 2 bytes, 3 cycles
+                            mtl::u8{ L3 },
 
-    // ADC L2
-    code.emplace_back(0x65); // ADC zero page: 2 bytes, 3 cycles
-    code.emplace_back(L2);
-    code_duration += 3;
+                            mtl::u8{ 0xA5 }, // LDA zero page: 2 bytes, 3 cycles
+                            mtl::u8{ H1 },
+                            mtl::u8{ 0x65 }, // ADC zero page: 2 bytes, 3 cycles
+                            mtl::u8{ H2 },
+                            mtl::u8{ 0x85 }, // STA zero page: 2 bytes, 3 cycles
+                            mtl::u8{H3},
 
-    // STA L3
-    code.emplace_back(0x85); // STA zero page: 2 bytes, 3 cycles
-    code.emplace_back(L3);
-    code_duration += 3;
+        HLT
+    };
 
-    // LDA H1
-    code.emplace_back(0xA5); // LDA zero page: 2 bytes, 3 cycles
-    code.emplace_back(H1);
-    code_duration += 3;
-
-    // ADC H2
-    code.emplace_back(0x65); // ADC zero page: 2 bytes, 3 cycles
-    code.emplace_back(H2);
-    code_duration += 3;
-
-    // STA H3
-    code.emplace_back(0x85); // STA zero page: 2 bytes, 3 cycles
-    code.emplace_back(H3);
-    code_duration += 3;
+    constexpr size_t code_duration = 2 + (3 + 3 + 3) * 2;
 
     // insert the code to the memory
-    auto [data, program_end] = assemble(code);
+    auto data = linker::assemble({main, MAIN_ADDR});
 
     // initialize the arguments
     data[L1] = mtl::u8(0x93);
@@ -134,7 +89,7 @@ TEST_F(Program, Add16Bit) {
     cpu.start(memory, clock, registers);
 
     // check the results
-    EXPECT_EQ(registers.PC, program_end);                           // 1 for CLI and 1 for HLT
+    EXPECT_EQ(registers.PC, MAIN_ADDR + mtl::StrongInt{main.size()}.unsafe_cast<uint16_t>());
     EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
     EXPECT_EQ(memory[mtl::u16(L3)], 0x08);                          // (data[L1] + data[L2]) % 0x100
     EXPECT_EQ(memory[mtl::u16(H3)], 0x38);                          // data[H1] + data[H2] + carry
@@ -151,39 +106,27 @@ TEST_F(Program, Add16Bit) {
 /// LDA ADDR_FIRST
 /// ADC ADDR_SECOND
 /// STA ADDR_RESULT
-TEST_F(Program, DecimalAddition) {
+TEST(Program, DecimalAddition) {
     constexpr uint8_t ADDR_FIRST  = 0x00;
     constexpr uint8_t ADDR_SECOND = 0x01;
     constexpr uint8_t ADDR_RESULT = 0x02;
 
-    std::vector<mtl::u8> code;
-    size_t code_duration = 0;
+    constexpr mtl::u16 MAIN_ADDR{ 0x0300 };
 
-    // CLC
-    code.emplace_back(0x18); // 1 byte, 2 cycles
-    code_duration += 2;
+    const std::vector main{ mtl::u8{ 0xF8 },   // SED: 1 byte, 2 cycles
+                            mtl::u8{ 0x18 },   // CLC: 1 byte, 2 cycles
+                            mtl::u8{ 0xA5 },   // LDA zero page: 2 bytes, 3 cycles
+                            mtl::u8{ ADDR_FIRST },
+                            mtl::u8{ 0x65 },   // ADC zero page: 2 bytes, 3 cycles
+                            mtl::u8{ ADDR_SECOND },
+                            mtl::u8{ 0x85 },   // STA zero page: 2 bytes, 3 cycles
+                            mtl::u8{ ADDR_RESULT },
+                            HLT };
 
-    // SED
-    code.emplace_back(0xF8); // 1 byte, 2 cycles
-    code_duration += 2;
-
-    // LDA zero page
-    code.emplace_back(0xA5); // 2 bytes, 3 cycles
-    code.emplace_back(ADDR_FIRST);
-    code_duration += 3;
-
-    // ADC zero page
-    code.emplace_back(0x65); // 2 bytes, 3 cycles
-    code.emplace_back(ADDR_SECOND);
-    code_duration += 3;
-
-    // STA zero page
-    code.emplace_back(0x85); // 2 bytes, 3 cycles
-    code.emplace_back(ADDR_RESULT);
-    code_duration += 3;
+    constexpr size_t code_duration = 2 + 2 + 3 + 3 + 3;
 
     // insert the code to the memory
-    auto [data, program_end] = assemble(code);
+    auto data = linker::assemble({ main, MAIN_ADDR });
 
     // initialize the arguments
     data[ADDR_FIRST]  = mtl::u8(0x79);
@@ -197,7 +140,7 @@ TEST_F(Program, DecimalAddition) {
     cpu.start(memory, clock, registers);
 
     // check the results
-    EXPECT_EQ(registers.PC, program_end);                           // 1 for CLI and 1 for HLT
+    EXPECT_EQ(registers.PC, MAIN_ADDR + mtl::StrongInt{main.size()}.unsafe_cast<uint16_t>());
     EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
     EXPECT_EQ(memory[mtl::u16(ADDR_RESULT)], 0x93);                 // 79 + 14 = 93
 }
@@ -215,7 +158,7 @@ TEST_F(Program, DecimalAddition) {
 /// LDA H1
 /// SBC H2
 /// STA H3
-TEST_F(Program, Subtract16Bit) {
+TEST(Program, Subtract16Bit) {
     constexpr uint8_t L1 = 0x00;
     constexpr uint8_t H1 = 0x01;
     constexpr uint8_t L2 = 0x02;
@@ -223,45 +166,30 @@ TEST_F(Program, Subtract16Bit) {
     constexpr uint8_t L3 = 0x04;
     constexpr uint8_t H3 = 0x05;
 
-    std::vector<mtl::u8> code;
-    size_t code_duration = 0;
+    constexpr mtl::u16 MAIN_ADDR{ 0x0300 };
 
-    // SEC
-    code.emplace_back(0x38); // 1 byte, 2 cycles
-    code_duration += 2;
+    const std::vector main{ mtl::u8{ 0x38 }, // SEC: 1 byte, 2 cycles
 
-    // LDA L1
-    code.emplace_back(0xA5); // LDA zero page: 2 bytes, 3 cycles
-    code.emplace_back(L1);
-    code_duration += 3;
+                            mtl::u8{ 0xA5 }, // LDA zero page: 2 bytes, 3 cycles
+                            mtl::u8{ L1 },
+                            mtl::u8{ 0xE5 }, // SBC zero page: 2 bytes, 3 cycles
+                            mtl::u8{ L2 },
+                            mtl::u8{ 0x85 }, // STA zero page: 2 bytes, 3 cycles
+                            mtl::u8{L3},
 
-    // SBC L2
-    code.emplace_back(0xE5); // SBC zero page: 2 bytes, 3 cycles
-    code.emplace_back(L2);
-    code_duration += 3;
+                            mtl::u8{0xA5}, // LDA zero page: 2 bytes, 3 cycles
+                            mtl::u8{ H1 },
+                            mtl::u8{ 0xE5 }, // SBC zero page: 2 bytes, 3 cycles
+                            mtl::u8{ H2 },
+                            mtl::u8{ 0x85 }, // STA zero page: 2 bytes, 3 cycles
+                            mtl::u8{ H3 },
 
-    // STA L3
-    code.emplace_back(0x85); // STA zero page: 2 bytes, 3 cycles
-    code.emplace_back(L3);
-    code_duration += 3;
+                            HLT };
 
-    // LDA H1
-    code.emplace_back(0xA5); // LDA zero page: 2 bytes, 3 cycles
-    code.emplace_back(H1);
-    code_duration += 3;
-
-    // SBC H2
-    code.emplace_back(0xE5); // SBC zero page: 2 bytes, 3 cycles
-    code.emplace_back(H2);
-    code_duration += 3;
-
-    // STA H3
-    code.emplace_back(0x85); // STA zero page: 2 bytes, 3 cycles
-    code.emplace_back(H3);
-    code_duration += 3;
+    constexpr size_t code_duration = 2 + (3 + 3 + 3) * 2;
 
     // insert the code to the memory
-    auto [data, program_end] = assemble(code);
+    auto data = linker::assemble({ main, MAIN_ADDR });
 
     // initialize the arguments
     data[L1] = mtl::u8(0x75);
@@ -277,7 +205,7 @@ TEST_F(Program, Subtract16Bit) {
     cpu.start(memory, clock, registers);
 
     // check the results
-    EXPECT_EQ(registers.PC, program_end);                           // 1 for CLI and 1 for HLT
+    EXPECT_EQ(registers.PC, MAIN_ADDR + mtl::StrongInt{main.size()}.unsafe_cast<uint16_t>());
     EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
     EXPECT_EQ(memory[mtl::u16(L3)], 0xE2);                          // (0x75 - 0x93) % 0x100
     EXPECT_EQ(memory[mtl::u16(H3)], 0xCE);                          // (0x03 - 0x34 - carry) % 0x100
@@ -294,39 +222,25 @@ TEST_F(Program, Subtract16Bit) {
 /// LDA ADDR_FIRST
 /// SBC ADDR_SECOND
 /// STA ADDR_RESULT
-TEST_F(Program, DecimalSubtract) {
+TEST(Program, DecimalSubtract) {
     constexpr uint8_t ADDR_FIRST  = 0x00;
     constexpr uint8_t ADDR_SECOND = 0x01;
     constexpr uint8_t ADDR_RESULT = 0x02;
 
-    std::vector<mtl::u8> code;
-    size_t code_duration = 0;
+    constexpr mtl::u16 MAIN_ADDR{ 0x0300 };
 
-    // SED
-    code.emplace_back(0xF8); // 1 byte, 2 cycles
-    code_duration += 2;
+    const std::vector main{ mtl::u8{ 0xF8 },                         // SED: 1 byte, 2 cycles
+                            mtl::u8{ 0x38 },                         // SEC: 1 byte, 2 cycles
+                            mtl::u8{0xA5}, // LDA zero page: 2 bytes, 3 cycles
+                            mtl::u8{ADDR_FIRST},
+                            mtl::u8{0xE5}, // SBC zero page: 2 bytes, 3 cycles
+                            mtl::u8{ ADDR_SECOND }, mtl::u8{ 0x85 }, // STA zero page: 2 bytes, 3 cycles
+                            mtl::u8{ ADDR_RESULT }, HLT };
 
-    // SEC
-    code.emplace_back(0x38); // 1 byte, 2 cycles
-    code_duration += 2;
-
-    // LDA ADDR_FIRST
-    code.emplace_back(0xA5); // LDA zero page: 2 bytes, 3 cycles
-    code.emplace_back(ADDR_FIRST);
-    code_duration += 3;
-
-    // SBC ADDR_SECOND
-    code.emplace_back(0xE5); // SBC zero page: 2 bytes, 3 cycles
-    code.emplace_back(ADDR_SECOND);
-    code_duration += 3;
-
-    // STA ADDR_RESULT
-    code.emplace_back(0x85); // STA zero page: 2 bytes, 3 cycles
-    code.emplace_back(ADDR_RESULT);
-    code_duration += 3;
+    constexpr size_t code_duration = 2 + 2 + 3 + 3 + 3;
 
     // insert the code to the memory
-    auto [data, program_end] = assemble(code);
+    auto data = linker::assemble({main, MAIN_ADDR});
 
     // initialize the arguments
     data[ADDR_FIRST]  = mtl::u8(0x44);
@@ -340,9 +254,9 @@ TEST_F(Program, DecimalSubtract) {
     cpu.start(memory, clock, registers);
 
     // check the results
-    EXPECT_EQ(registers.PC, program_end);                           // 1 for CLI and 1 for HLT
+    EXPECT_EQ(registers.PC, MAIN_ADDR + mtl::StrongInt{ main.size() }.unsafe_cast<uint16_t>());
     EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
-    EXPECT_EQ(memory[mtl::u16(ADDR_RESULT)], 0x15);         // 44 - 29 = 15
+    EXPECT_EQ(memory[mtl::u16(ADDR_RESULT)], 0x15);                 // 44 - 29 = 15
 }
 
 /**
@@ -357,29 +271,24 @@ TEST_F(Program, DecimalSubtract) {
  * STA ADDR_RESULT
  * @endcode
  */
-TEST_F(Program, And) {
+TEST(Program, And) {
     constexpr uint8_t ADDR_RESULT = 0x00;
 
-    std::vector<mtl::u8> code;
-    size_t code_duration = 0;
+    constexpr mtl::u16 MAIN_ADDR{ 0x0300 };
 
-    // LDA #1100X111; X is 0 or 1
-    code.emplace_back(0xA9); // LDA immediate: 2 bytes, 2 cycles
-    code.emplace_back(0b11001111);
-    code_duration += 2;
+    const std::vector main{ mtl::u8{ 0xA9 },       // LDA immediate: 2 bytes, 2 cycles
+                            mtl::u8{ 0b11001111 },
+                            mtl::u8{ 0x29 },       // AND immediate: 2 bytes, 2 cycles
+                            mtl::u8{ 0b11110111 },
+                            mtl::u8{ 0x85 },       // STA zero page: 2 bytes, 3 cycles
+                            mtl::u8{ADDR_RESULT},
+                            HLT
+    };
 
-    // AND #11110111
-    code.emplace_back(0x29); // AND immediate: 2 bytes, 2 cycles
-    code.emplace_back(0b11110111);
-    code_duration += 2;
-
-    // STA ADDR_RESULT
-    code.emplace_back(0x85); // STA zero page: 2 bytes, 3 cycles
-    code.emplace_back(ADDR_RESULT);
-    code_duration += 3;
+    constexpr size_t code_duration = 2 + 2 + 3;
 
     // insert the code to the memory
-    auto [data, program_end] = assemble(code);
+    const auto data = linker::assemble({main, MAIN_ADDR});
 
     // execute the program
     Clock clock(std::chrono::nanoseconds(0));
@@ -389,9 +298,9 @@ TEST_F(Program, And) {
     cpu.start(memory, clock, registers);
 
     // check the results
-    EXPECT_EQ(registers.PC, program_end);                           // 1 for CLI and 1 for HLT
+    EXPECT_EQ(registers.PC, MAIN_ADDR + mtl::StrongInt{ main.size() }.unsafe_cast<uint16_t>());
     EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
-    EXPECT_EQ(memory[mtl::u16(ADDR_RESULT)], 0b11000111);   // 0b11001111 & 0b111101111 = 0b11000111
+    EXPECT_EQ(memory[mtl::u16(ADDR_RESULT)], 0b11000111);           // 0b11001111 & 0b111101111 = 0b11000111
 }
 
 /**
@@ -406,29 +315,24 @@ TEST_F(Program, And) {
  * STA ADDR_RESULT
  * @endcode
  */
-TEST_F(Program, Or) {
+TEST(Program, Or) {
     constexpr uint8_t ADDR_RESULT = 0x00;
 
-    std::vector<mtl::u8> code;
-    size_t code_duration = 0;
+    constexpr mtl::u16 MAIN_ADDR{ 0x0300 };
 
-    // LDA #1100X111; X is 0 or 1
-    code.emplace_back(0xA9); // LDA immediate: 2 bytes, 2 cycles
-    code.emplace_back(0b11100111);
-    code_duration += 2;
+    const std::vector main{ mtl::u8{ 0xA9 },                         // LDA immediate: 2 bytes, 2 cycles
+                            mtl::u8{ 0b11100111 },
+                            mtl::u8{ 0x09 }, // ORA immediate: 2 bytes, 2 cycles
+                            mtl::u8{ 0b00001000 },
+                            mtl::u8{0x85}, // STA zero page: 2 bytes, 3 cycles
+                            mtl::u8{ADDR_RESULT},
+                            HLT
+    };
 
-    // ORA #00001000
-    code.emplace_back(0x09); // ORA immediate: 2 bytes, 2 cycles
-    code.emplace_back(0b00001000);
-    code_duration += 2;
-
-    // STA ADDR_RESULT
-    code.emplace_back(0x85); // STA zero page: 2 bytes, 3 cycles
-    code.emplace_back(ADDR_RESULT);
-    code_duration += 3;
+    constexpr size_t code_duration = 2 + 2 + 3;
 
     // insert the code to the memory
-    auto [data, program_end] = assemble(code);
+    const auto data = linker::assemble({ main, MAIN_ADDR });
 
     // execute the program
     Clock clock(std::chrono::nanoseconds(0));
@@ -438,9 +342,9 @@ TEST_F(Program, Or) {
     cpu.start(memory, clock, registers);
 
     // check the results
-    EXPECT_EQ(registers.PC, program_end);                // 1 for CLI and 1 for HLT
+    EXPECT_EQ(registers.PC, MAIN_ADDR + mtl::StrongInt{ main.size() }.unsafe_cast<uint16_t>());
     EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
-    EXPECT_EQ(memory[mtl::u16(ADDR_RESULT)], 0b11101111);   // 0b11100111 | 0b00001000 = 0b11101111
+    EXPECT_EQ(memory[mtl::u16(ADDR_RESULT)], 0b11101111);           // 0b11100111 | 0b00001000 = 0b11101111
 }
 
 /**
@@ -455,29 +359,23 @@ TEST_F(Program, Or) {
  * STA ADDR_RESULT
  * @endcode
  */
-TEST_F(Program, Xor) {
+TEST(Program, Xor) {
     constexpr uint8_t ADDR_RESULT = 0x00;
 
-    std::vector<mtl::u8> code;
-    size_t code_duration = 0;
+    constexpr mtl::u16 MAIN_ADDR{ 0x0300 };
 
-    // LDA #10101111
-    code.emplace_back(0xA9); // LDA immediate: 2 bytes, 2 cycles
-    code.emplace_back(0b10101111);
-    code_duration += 2;
+    const std::vector main{ mtl::u8{ 0xA9 },      // LDA immediate: 2 bytes, 2 cycles
+                            mtl::u8{ 0b10101111 },
+                            mtl::u8{ 0x49 },      // EOR immediate: 2 bytes, 2 cycles
+                            mtl::u8{0b11111111},
+                            mtl::u8{ 0x85 },      // STA zero page: 2 bytes, 3 cycles
+                            mtl::u8{ ADDR_RESULT },
+                            HLT };
 
-    // EOR #11111111
-    code.emplace_back(0x49); // EOR immediate: 2 bytes, 2 cycles
-    code.emplace_back(0b11111111);
-    code_duration += 2;
-
-    // STA ADDR_RESULT
-    code.emplace_back(0x85); // STA zero page: 2 bytes, 3 cycles
-    code.emplace_back(ADDR_RESULT);
-    code_duration += 3;
+    constexpr size_t code_duration = 2 + 2 + 3;
 
     // insert the code to the memory
-    auto [data, program_end] = assemble(code);
+    const auto data = linker::assemble({ main, MAIN_ADDR });
 
     // execute the program
     Clock clock(std::chrono::nanoseconds(0));
@@ -487,7 +385,7 @@ TEST_F(Program, Xor) {
     cpu.start(memory, clock, registers);
 
     // check the results
-    EXPECT_EQ(registers.PC, program_end);                // 1 for CLI and 1 for HLT
+    EXPECT_EQ(registers.PC, MAIN_ADDR + mtl::StrongInt{main.size()}.unsafe_cast<uint16_t>());
     EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
     EXPECT_EQ(memory[mtl::u16(ADDR_RESULT)], 0b01010000);             // 0b10101111 ^ 0b11111111 = 0b01010000
 }
@@ -508,33 +406,33 @@ TEST_F(Program, Xor) {
  * SED; opcode at address 0x0258, set decimal just to check that we were here
  * @endcode
  */
-TEST_F(Program, BranchOnCarrySet) {
+TEST(Program, BranchOnCarrySet) {
     constexpr mtl::u16 ADDR1{ 0x0300 };
     constexpr mtl::u16 ADDR2{ 0x0302 };
     constexpr mtl::u16 ADDR_RES{ 0x0304 };
     constexpr mtl::u8 OFFSET{ 0x50 };
-    constexpr mtl::u16 BRANCH_ADDR{ 0x258 + 1 }; // to account for the prepended CLI
 
-    std::vector code{
-        mtl::u8{ 0xAD }, // LDA absolute: 3 bytes, 4 cycles
-        low_byte(ADDR1),
-        high_byte(ADDR1),
-        mtl::u8{ 0x6D }, // ADC absolute: 3 bytes, 4 cycles
-        low_byte(ADDR2),
-        high_byte(ADDR2),
-        mtl::u8{ 0xB0 }, // BCS: 2 bytes, 2 cycles if fails, 3 if succeeds, 4 if to a new page
-        OFFSET,
-        mtl::u8{ 0x8D }, // STA absolute: 3 bytes, 4 cycles
-        low_byte(ADDR_RES),
-        high_byte(ADDR_RES),
-    };
+    constexpr mtl::u16 MAIN_ADDR{ 0x0400 };
+    constexpr mtl::u16 BRANCH_ADDR{ 0x458 };
 
-    // insert the code to the memory
-    auto [data, program_end] = assemble(code);
+    const std::vector main{ mtl::u8{ 0xAD }, // LDA absolute: 3 bytes, 4 cycles
+                            low_byte(ADDR1),
+                            high_byte(ADDR1),
+                            mtl::u8{ 0x6D }, // ADC absolute: 3 bytes, 4 cycles
+                            low_byte(ADDR2),
+                            high_byte(ADDR2),
+                            mtl::u8{ 0xB0 }, // BCS: 2 bytes, 2 cycles if fails, 3 if succeeds, 4 if to a new page
+                            OFFSET,
+                            mtl::u8{ 0x8D }, // STA absolute: 3 bytes, 4 cycles
+                            low_byte(ADDR_RES),
+                            high_byte(ADDR_RES),
+                            HLT };
 
-    // populate the branch
-    data[BRANCH_ADDR.to_underlying()]     = mtl::u8{ 0xF8 }; // SED: 1 byte, 2 cycles
-    data[BRANCH_ADDR.to_underlying() + 1] = HLT;
+    const std::vector branch{ mtl::u8{ 0xF8 }, // SED: 1 byte, 2 cycles
+                              HLT };
+
+    auto data = linker::assemble(
+            {.binary = main, .address_start = MAIN_ADDR}, {{.binary = branch, .address_start = BRANCH_ADDR}});
 
     { // branch not successful
         constexpr size_t code_duration = 4 + 4 + 2 + 4;
@@ -551,7 +449,7 @@ TEST_F(Program, BranchOnCarrySet) {
         cpu.start(memory, clock, registers);
 
         // check the results
-        EXPECT_EQ(registers.PC, program_end);                           // 1 for CLI and 1 for HLT
+        EXPECT_EQ(registers.PC, MAIN_ADDR + mtl::StrongInt{main.size()}.unsafe_cast<uint16_t>());
         EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
         EXPECT_EQ(memory[ADDR_RES], 0x6D);                              // 0x44 + 0x29 = 0x6D
         EXPECT_FALSE(registers.SR.carry);                               // precondition for the branch to not happen
@@ -593,40 +491,46 @@ TEST_F(Program, BranchOnCarrySet) {
  * ADDR_RES
  * @endcode
  */
-TEST_F(Program, SequencingTwoBranchInstructions) {
-    constexpr mtl::u16 ADDR1{ 0x0300 };
-    constexpr mtl::u16 ADDR2{ 0x0302 };
-    constexpr mtl::u16 ADDR_RES{ 0x0304 };
+TEST(Program, SequencingTwoBranchInstructions) {
+    constexpr mtl::u16 ADDR1{ 0x0400 };
+    constexpr mtl::u16 ADDR2{ 0x0402 };
+    constexpr mtl::u16 ADDR_RES{ 0x0404 };
+
     constexpr mtl::u8 OFFSET1{ 0x50 };
     constexpr auto OFFSET2 = std::bit_cast<mtl::u8>(mtl::i8{ -0x75 });
-    constexpr mtl::u16 CARRY_BRANCH{ 0x0258 + 1 };    // to account for the prepended CLI
-    constexpr mtl::u16 NEGATIVE_BRANCH{ 0x0195 + 1 }; // to account for the prepended CLI
 
-    std::vector code{
-        mtl::u8{ 0xAD }, // LDA absolute: 3 bytes, 4 cycles
-        low_byte(ADDR1),
-        high_byte(ADDR1),
-        mtl::u8{ 0x6D }, // ADC absolute: 3 bytes, 4 cycles
-        low_byte(ADDR2),
-        high_byte(ADDR2),
-        mtl::u8{ 0xB0 }, // BCS: 2 bytes, 2 cycles if fails, 3 if succeeds, 4 if to a new page
-        OFFSET1,
-        mtl::u8{ 0x30 }, // BMI: 2 bytes, 2 cycles if fails, 3 if succeeds, 4 if to a new page
-        OFFSET2,
-        mtl::u8{ 0x8D }, // STA absolute: 3 bytes, 4 cycles
-        low_byte(ADDR_RES),
-        high_byte(ADDR_RES),
-    };
-    const auto size_wo_branch = code.size();
+    constexpr mtl::u16 MAIN_ADDR{ 0x0300 };
+    constexpr mtl::u16 CARRY_BRANCH_ADDR{ 0x0358 };
+    constexpr mtl::u16 NEGATIVE_BRANCH_ADDR{ 0x0295 };
 
-    // insert the code to the memory
-    auto [data, program_end] = assemble(code);
+    const std::vector main{ mtl::u8{ 0xAD }, // LDA absolute: 3 bytes, 4 cycles
+                            low_byte(ADDR1),
+                            high_byte(ADDR1),
+                            mtl::u8{ 0x6D }, // ADC absolute: 3 bytes, 4 cycles
+                            low_byte(ADDR2),
+                            high_byte(ADDR2),
+                            mtl::u8{ 0xB0 }, // BCS: 2 bytes, 2 cycles if fails, 3 if succeeds, 4 if to a new page
+                            OFFSET1,
+                            mtl::u8{ 0x30 }, // BMI: 2 bytes, 2 cycles if fails, 3 if succeeds, 4 if to a new page
+                            OFFSET2,
+                            mtl::u8{ 0x8D }, // STA absolute: 3 bytes, 4 cycles
+                            low_byte(ADDR_RES),
+                            high_byte(ADDR_RES),
+                            HLT };
 
-    // populate the branches
-    data[CARRY_BRANCH.to_underlying()]        = mtl::u8{ 0xF8 }; // SED: 1 byte, 2 cycles
-    data[CARRY_BRANCH.to_underlying() + 1]    = HLT;
-    data[NEGATIVE_BRANCH.to_underlying()]     = mtl::u8{ 0x78 }; // SEI: 1 byte, 2 cycles
-    data[NEGATIVE_BRANCH.to_underlying() + 1] = HLT;
+    const std::vector carry_branch{ mtl::u8{ 0xF8 }, // SED: 1 byte, 2 cycles
+                                    HLT };
+
+    const std::vector negative_branch{ mtl::u8{ 0x78 }, // SEI: 1 byte, 2 cycles
+                                       HLT };
+
+    // assemble the code
+    auto data = linker::assemble(
+            {
+                    .binary = main, .address_start = MAIN_ADDR
+              },
+            { { .binary = carry_branch, .address_start = CARRY_BRANCH_ADDR },
+              { .binary = negative_branch, .address_start = NEGATIVE_BRANCH_ADDR } });
 
     { // no branching
         constexpr size_t code_duration = 4 + 4 + 2 + 2 + 4;
@@ -643,7 +547,7 @@ TEST_F(Program, SequencingTwoBranchInstructions) {
         cpu.start(memory, clock, registers);
 
         // check the results
-        EXPECT_EQ(registers.PC, PROGRAM_START + size_wo_branch + 2);    // 1 for CLI and 1 for HLT
+        EXPECT_EQ(registers.PC, MAIN_ADDR + mtl::StrongInt{main.size()}.unsafe_cast<uint16_t>());
         EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
         EXPECT_EQ(memory[ADDR_RES], 0x6D);                              // 0x44 + 0x29 = 0x6D
         EXPECT_FALSE(registers.SR.carry);    // precondition for the first branch to not happen
@@ -666,7 +570,7 @@ TEST_F(Program, SequencingTwoBranchInstructions) {
         cpu.start(memory, clock, registers);
 
         // check the results
-        EXPECT_EQ(registers.PC, CARRY_BRANCH + mtl::u16{ 2 });          // 1 for SED and 1 for HLT
+        EXPECT_EQ(registers.PC, CARRY_BRANCH_ADDR + mtl::StrongInt{carry_branch.size()}.unsafe_cast<uint16_t>());
         EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
         EXPECT_EQ(memory[ADDR_RES], 0x12);                              // the canary
         EXPECT_TRUE(registers.SR.carry);                                // precondition for the branch
@@ -689,7 +593,8 @@ TEST_F(Program, SequencingTwoBranchInstructions) {
         cpu.start(memory, clock, registers);
 
         // check the results
-        EXPECT_EQ(registers.PC, NEGATIVE_BRANCH + mtl::u16{ 2 });       // 1 for SEI and 1 for HLT
+        EXPECT_EQ(registers.PC,
+                  NEGATIVE_BRANCH_ADDR + mtl::StrongInt{ negative_branch.size() }.unsafe_cast<uint16_t>());
         EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
         EXPECT_EQ(memory[ADDR_RES], 0x12);                              // the canary
         EXPECT_FALSE(registers.SR.carry);            // precondition for the previous branch to not happen
