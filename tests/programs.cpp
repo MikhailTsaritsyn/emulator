@@ -602,4 +602,126 @@ TEST(Program, SequencingTwoBranchInstructions) {
         EXPECT_TRUE(registers.SR.interrupt_disable); // check that instruction after branch executed
     }
 }
+
+/**
+ * @brief Example 4.6: Use JMP to branch out of range
+ *
+ * @code
+ * LDA ADDR1
+ * ADC ADDR2
+ * BCC *+3; branch if no carry to point 2
+ * JMP ADDR_JUMP
+ * BMI OFFSET; point 2
+ * STA ADDR_RES; if not negative, store result
+ * @endcode
+ */
+TEST(Program, JumpOutOfRange) {
+    constexpr mtl::u16 ADDR1{ 0x0200 };
+    constexpr mtl::u16 ADDR2{ 0x0202 };
+    constexpr mtl::u16 ADDR_RES{ 0x0204 };
+
+    constexpr mtl::u16 MAIN_ADDR{ 0x03E0 };
+    constexpr mtl::u16 JUMP_ADDR{ 0x1000 };
+
+    constexpr auto OFFSET          = std::bit_cast<mtl::u8>(mtl::i8(0x50));
+    // calculated from the position of past-the-point-2 instruction
+    constexpr mtl::u16 BRANCH_ADDR = MAIN_ADDR + mtl::u16{ 0x0D } + mtl::u16(OFFSET);
+
+    const std::vector main{ mtl::u8{ 0xAD }, // LDA absolute: 3 bytes, 4 cycles
+                            low_byte(ADDR1),
+                            high_byte(ADDR1),
+                            mtl::u8{ 0x6D }, // ADC absolute: 3 bytes, 4 cycles
+                            low_byte(ADDR2),
+                            high_byte(ADDR2),
+                            mtl::u8{ 0x90 }, // BCC: 1 byte, 2 cycles if fails, 3 if succeeds, 4 if to a new page
+                            mtl::u8{ 0x03 },
+                            mtl::u8{ 0x4C }, // JMP absolute: 3 bytes, 3 cycles
+                            low_byte(JUMP_ADDR),
+                            high_byte(JUMP_ADDR),
+                            mtl::u8{ 0x30 }, // BMI: 1 byte, 2 cycles if fails, 3 if succeeds, 4 if to a new page
+                            OFFSET,
+                            mtl::u8{ 0x8D }, // STA absolute: 3 bytes, 4 cycles
+                            low_byte(ADDR_RES),
+                            high_byte(ADDR_RES),
+                            HLT };
+
+    const std::vector branch{ mtl::u8{ 0xF8 }, // SED: 1 byte, 2 cycles
+                              HLT };
+
+    const std::vector jump{ mtl::u8{ 0x78 }, // SEI: 1 byte, 2 cycles
+                            HLT };
+
+    auto data = linker::assemble(
+            { main, MAIN_ADDR },
+            { { branch, BRANCH_ADDR }, { jump, JUMP_ADDR } });
+
+    { // no exiting the main
+        constexpr size_t code_duration = 4 + 4 + 3 + 2 + 4;
+
+        // initialize the arguments
+        data[ADDR1.to_underlying()] = mtl::u8(0x44);
+        data[ADDR2.to_underlying()] = mtl::u8(0x29);
+
+        // execute the program
+        Clock clock(std::chrono::nanoseconds(0));
+        Memory memory{ data };
+        Registers registers{};
+        CPU cpu{};
+        cpu.start(memory, clock, registers);
+
+        // check the results
+        EXPECT_EQ(registers.PC, MAIN_ADDR + mtl::StrongInt{ main.size() }.unsafe_cast<uint16_t>());
+        EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
+        EXPECT_EQ(memory[ADDR_RES], 0x6D);                              // 0x44 + 0x29 = 0x6D
+        EXPECT_FALSE(registers.SR.carry);                               // precondition for the first branch to happen
+        EXPECT_FALSE(registers.SR.negative); // precondition for the second branch to not happen
+    }
+
+    { // branch on negative
+        constexpr size_t code_duration = 4 + 4 + 3 + 4 + 2;
+
+        // initialize the arguments
+        data[ADDR1.to_underlying()]    = mtl::u8(0x50);
+        data[ADDR2.to_underlying()]    = mtl::u8(0x50);
+        data[ADDR_RES.to_underlying()] = mtl::u8(0x12); // a canary
+
+        // execute the program
+        Clock clock(std::chrono::nanoseconds(0));
+        Memory memory{ data };
+        Registers registers{};
+        CPU cpu{};
+        cpu.start(memory, clock, registers);
+
+        // check the results
+        EXPECT_EQ(registers.PC, BRANCH_ADDR + mtl::StrongInt{ branch.size() }.unsafe_cast<uint16_t>());
+        EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
+        EXPECT_EQ(memory[ADDR_RES], 0x12);                              // the canary
+        EXPECT_FALSE(registers.SR.carry);                               // precondition for the first branch to happen
+        EXPECT_TRUE(registers.SR.negative);                             // precondition for the second branch to happen
+        EXPECT_TRUE(registers.SR.decimal);                              // result of the branch code
+    }
+
+    { // jump on carry set
+        constexpr size_t code_duration = 4 + 4 + 2 + 3 + 2;
+
+        // initialize the arguments
+        data[ADDR1.to_underlying()]    = mtl::u8(0xF0);
+        data[ADDR2.to_underlying()]    = mtl::u8(0x20);
+        data[ADDR_RES.to_underlying()] = mtl::u8(0x12); // a canary
+
+        // execute the program
+        Clock clock(std::chrono::nanoseconds(0));
+        Memory memory{ data };
+        Registers registers{};
+        CPU cpu{};
+        cpu.start(memory, clock, registers);
+
+        // check the results
+        EXPECT_EQ(registers.PC, JUMP_ADDR + mtl::StrongInt{ jump.size() }.unsafe_cast<uint16_t>());
+        EXPECT_EQ(clock.cycle(), code_duration + STARTUP_DURATION + 3); // 2 for CLI and 1 for HLT
+        EXPECT_EQ(memory[ADDR_RES], 0x12);                              // the canary
+        EXPECT_TRUE(registers.SR.carry);             // precondition for the first branch to not happen
+        EXPECT_TRUE(registers.SR.interrupt_disable); // result of the jump code
+    }
+}
 } // namespace emulator::mos_6502::test
